@@ -115,15 +115,23 @@ AddEventHandler("opx77:status:effects", function(payload)
   -- bounded: any resource on this machine can raise this name, and the page keeps one
   -- element per unique chip id forever
   local chips = {}
-  if type(payload.chips) == "table" then
-    for index, chip in ipairs(payload.chips) do
-      if index > MAX_CHIPS then break end
-      if type(chip) == "table" and chip.id ~= nil then chips[#chips + 1] = chip end
+  local kept = 0
+  local offered = payload.chips
+  if type(offered) == "table" then
+    local count = #offered
+    if count > MAX_CHIPS then count = MAX_CHIPS end
+    for index = 1, count do
+      local chip = offered[index]
+      if type(chip) == "table" and chip.id ~= nil then
+        kept = kept + 1
+        chips[kept] = chip
+      end
     end
   end
   local marks = {}
-  for _, chip in ipairs(chips) do
-    marks[#marks + 1] = tostring(chip.id) .. "\1" .. tostring(chip.label) .. "\1" ..
+  for index = 1, kept do
+    local chip = chips[index]
+    marks[index] = tostring(chip.id) .. "\1" .. tostring(chip.label) .. "\1" ..
       tostring(chip.tone or "")
   end
   effects = {

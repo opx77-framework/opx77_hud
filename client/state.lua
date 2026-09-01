@@ -69,6 +69,13 @@ function blocks.vitals(data, rows)
   end
 end
 
+--- The two needs and the word each is drawn under. A constant, not a literal inside the
+--- loop: written there it was three tables allocated on every frame this block builds.
+local NEED_GAUGES = {
+  { key = "hunger", label = "FOOD" },
+  { key = "thirst", label = "HYDRATION" },
+}
+
 --- Hunger and thirst, owned by opx77_status and drawn here. Hidden while comfortable, so a
 --- full bar does not sit on screen saying nothing.
 ---@param data table
@@ -76,8 +83,8 @@ end
 function blocks.needs(data, rows)
   local metadata = data.metadata or {}
   local threshold = Config.NEEDS_THRESHOLD
-  for _, gauge in ipairs({ { "hunger", "FOOD" }, { "thirst", "HYDRATION" } }) do
-    local key, label = gauge[1], gauge[2]
+  for index = 1, #NEED_GAUGES do
+    local key, label = NEED_GAUGES[index].key, NEED_GAUGES[index].label
     if finite(metadata[key]) then
       local value = percent(metadata[key])
       if threshold == false or value <= threshold then
@@ -111,9 +118,12 @@ function blocks.money(data, rows)
   local purse = data.money or {}
   local seen = {}
   local order = {}
-  for _, key in ipairs(KNOWN_MONEY) do
+  local ordered = 0
+  for index = 1, #KNOWN_MONEY do
+    local key = KNOWN_MONEY[index]
     seen[key] = true
-    order[#order + 1] = key
+    ordered = ordered + 1
+    order[ordered] = key
   end
   -- strings only: `table.sort` on mixed types raises, and so does `:lower()` on a number --
   -- both inside the one thread that repairs this surface
@@ -122,9 +132,13 @@ function blocks.money(data, rows)
     if type(key) == "string" and not seen[key] then extra[#extra + 1] = key end
   end
   table.sort(extra)
-  for _, key in ipairs(extra) do order[#order + 1] = key end
+  for index = 1, #extra do
+    ordered = ordered + 1
+    order[ordered] = extra[index]
+  end
 
-  for _, key in ipairs(order) do
+  for index = 1, ordered do
+    local key = order[index]
     local amount = purse[key]
     if finite(amount) and amount ~= 0 then
       rows[#rows + 1] = { kind = "text", id = key:lower(), label = key, value = money(amount) }
@@ -155,8 +169,9 @@ end
 function State.view()
   if not State.visible or State.data == nil then return nil end
   local rows = {}
-  for _, name in ipairs(Config.BLOCKS) do
-    local build = blocks[name]
+  local names = Config.BLOCKS
+  for index = 1, #names do
+    local build = blocks[names[index]]
     if build ~= nil then build(State.data, rows) end
   end
   return { rows = rows }
@@ -167,9 +182,11 @@ end
 ---@return string
 function State.signature(view)
   if view == nil then return "" end
+  local rows = view.rows
   local parts = {}
-  for _, row in ipairs(view.rows) do
-    parts[#parts + 1] = table.concat({
+  for index = 1, #rows do
+    local row = rows[index]
+    parts[index] = table.concat({
       row.id, row.label or "", row.value or "", tostring(row.pct or ""), row.tone or "",
       row.icon or "",
     }, "\1")
