@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>OPX77 HUD</title>
+<link rel="stylesheet" href="open77-ui.css">
+<link rel="stylesheet" href="hud.css">
+</head>
+<body>
+
+<!-- Nothing focusable: this surface is on the "hud" layer and is never focused. -->
+<div class="gauges" id="gauges"></div>
+<ul class="info" id="info"></ul>
+
+<!-- Status effects. opx77_status owns them; this surface draws them. -->
+<div class="strip" id="strip"><ul class="chips" id="chips"></ul></div>
+
+<script src="hud.js"></script>
+</body>
+</html>

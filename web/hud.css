@@ -1,0 +1,280 @@
+/* The corner read-outs. Every value comes from open77-ui.css. */
+
+/* Night City yellow, as an accent-role override rather than a literal at each use
+   site: --op77-ink is the text ON this fill. */
+:root {
+  --op77-accent:      #fcee0a;
+  --op77-accent-ice:  #fff761;
+  --op77-accent-deep: #d4c500;
+  --op77-accent-soft: rgba(252, 238, 10, 0.13);
+  --op77-accent-line: rgba(252, 238, 10, 0.45);
+  --op77-ink:         #0a0a05;
+}
+
+* { box-sizing: border-box; }
+
+html {
+  margin: 0;
+  height: 100%;
+  overflow: hidden;
+  background: transparent;
+}
+
+body {
+  margin: 0;
+  height: 100%;
+  overflow: hidden;
+  background: transparent;
+  font-family: var(--op77-font-body);
+  color: var(--op77-text);
+  /* redundant: the surface is never focused */
+  pointer-events: none;
+  user-select: none;
+  opacity: 0;
+  transition: opacity var(--op77-dur) var(--op77-ease);
+}
+
+/* `body` alone, never a `html, body` group: opacity applies to the root too,
+   and a transparent root cannot be undone by a child. */
+body.open { opacity: 1; }
+
+.gauges {
+  position: fixed;
+  width: var(--hud-width, 210px);
+  max-width: calc(100vw - var(--op77-inset-x) * 2);
+  display: flex;
+  flex-direction: column;
+  gap: var(--op77-space-2);
+  transform: translateY(var(--slide, 8px));
+  transition: transform var(--op77-dur) var(--op77-ease);
+}
+
+body.open .gauges { transform: none; }
+
+.gauges.anchor-bottom-left,
+.gauges.anchor-top-left { left: var(--op77-inset-x); }
+.gauges.anchor-bottom-right,
+.gauges.anchor-top-right { right: var(--op77-inset-x); }
+.gauges.anchor-bottom-left,
+.gauges.anchor-bottom-right { bottom: var(--op77-inset-y); --slide: 8px; }
+.gauges.anchor-top-left,
+.gauges.anchor-top-right { top: var(--op77-inset-y); --slide: -8px; }
+
+.gauge {
+  display: flex;
+  align-items: center;
+  gap: var(--op77-space-2);
+}
+
+.gauge .icon {
+  flex: none;
+  width: 14px;
+  height: 14px;
+  color: var(--op77-text-dim);
+}
+.gauge .icon svg { display: block; width: 100%; height: 100%; }
+
+.gauge .blocks {
+  flex: 1;
+  display: flex;
+  gap: 2px;
+  min-width: 0;
+}
+
+.gauge .block {
+  flex: 1;
+  height: 10px;
+  min-width: 3px;
+  background: var(--op77-panel);
+  border: 1px solid var(--op77-line-hud);
+  transition: background var(--op77-dur-fast) var(--op77-ease),
+              border-color var(--op77-dur-fast) var(--op77-ease);
+}
+
+.gauge .block.on {
+  background: var(--op77-text-dim);
+  border-color: var(--op77-text-dim);
+}
+
+.gauge .value {
+  flex: none;
+  min-width: 22px;
+  text-align: right;
+  font: 700 var(--op77-fs-label) / 1 var(--op77-font-mono);
+  letter-spacing: var(--op77-track-label);
+  color: var(--op77-text);
+  font-variant-numeric: tabular-nums;
+}
+
+.gauge.health .block.on { background: var(--op77-accent); border-color: var(--op77-accent); }
+.gauge.health .icon { color: var(--op77-accent); }
+
+/* Which value is low is decided in Lua. */
+.gauge.warn .block.on { background: var(--op77-warn); border-color: var(--op77-warn); }
+.gauge.warn .icon, .gauge.warn .value { color: var(--op77-warn); }
+.gauge.bad .block.on { background: var(--op77-danger); border-color: var(--op77-danger); }
+.gauge.bad .icon, .gauge.bad .value { color: var(--op77-danger); }
+
+.info {
+  position: fixed;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  max-width: 34vw;
+  /* no plate under these lines, so the shadow is what keeps them legible */
+  text-shadow: 0 1px 3px rgba(3, 7, 13, 0.95), 0 0 10px rgba(3, 7, 13, 0.7);
+}
+
+.info.anchor-top-right,
+.info.anchor-bottom-right { right: var(--op77-inset-x); align-items: flex-end; }
+.info.anchor-top-left,
+.info.anchor-bottom-left { left: var(--op77-inset-x); align-items: flex-start; }
+.info.anchor-top-right,
+.info.anchor-top-left { top: var(--op77-inset-y); }
+.info.anchor-bottom-right,
+.info.anchor-bottom-left { bottom: var(--op77-inset-y); }
+
+.info .line {
+  display: flex;
+  align-items: baseline;
+  gap: var(--op77-space-2);
+  font: 400 var(--op77-fs-meta) / 1.3 var(--op77-font-mono);
+  letter-spacing: var(--op77-track-label);
+  text-transform: uppercase;
+  color: var(--op77-text-dim);
+  white-space: nowrap;
+}
+
+.info .line .value {
+  font-weight: 700;
+  color: var(--op77-text);
+  font-variant-numeric: tabular-nums;
+}
+.info .line .value:empty { display: none; }
+
+.info .line.on .value { color: var(--op77-ok); }
+
+/* Sheared plates. Declared after the base rule above, which it matches on
+   specificity -- keep it below or the shear is lost. */
+.gauge .block {
+  clip-path: polygon(4px 0, 100% 0, calc(100% - 4px) 100%, 0 100%);
+  border: 0;
+  background: var(--op77-panel-raised);
+}
+.gauge .block.on { border: 0; }
+
+/* ---------------------------------------------------------------- effects */
+/* Status effects, owned by opx77_status and drawn on this surface. */
+/* Visibility is body's alone, never a `html, body` group: a transparent root
+   cannot be undone by a child. */
+body.open { opacity: 1; }
+
+.strip {
+  position: fixed;
+  display: flex;
+  max-width: calc(100vw - var(--op77-inset-x) * 2);
+}
+
+.strip.anchor-bottom-left,
+.strip.anchor-top-left { left: var(--op77-inset-x); }
+.strip.anchor-bottom-right,
+.strip.anchor-top-right { right: var(--op77-inset-x); }
+/* --strip-offset is what keeps this clear of opx77_hud; nothing else coordinates them. */
+.strip.anchor-bottom-left,
+.strip.anchor-bottom-right { bottom: calc(var(--op77-inset-y) + var(--strip-offset, 120px)); }
+.strip.anchor-top-left,
+.strip.anchor-top-right { top: calc(var(--op77-inset-y) + var(--strip-offset, 120px)); }
+
+.chips {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--op77-space-2);
+}
+
+.chip {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: var(--op77-space-2);
+  padding: 5px var(--op77-space-3);
+  background: var(--op77-panel);
+  border: 1px solid var(--op77-line-hud);
+  font: 700 var(--op77-fs-label) / 1 var(--op77-font-mono);
+  letter-spacing: var(--op77-track-label);
+  text-transform: uppercase;
+  color: var(--op77-text);
+  white-space: nowrap;
+  animation: chip-in var(--op77-dur-fast) var(--op77-ease);
+}
+
+@keyframes chip-in {
+  from { transform: translateY(4px); opacity: 0; }
+}
+
+.chip .icon {
+  flex: none;
+  font: 900 var(--op77-fs-meta) / 1 var(--op77-font-mono);
+  color: var(--op77-text-dim);
+}
+.chip .icon:empty { display: none; }
+
+/* The countdown: a rule under the chip, animated by the page from one deadline. */
+.chip .time {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  height: 2px;
+  background: var(--op77-text-dim);
+  width: 100%;
+}
+
+/* Never group these: the icon takes a colour, the .time bar a background. */
+.chip.ok { border-color: rgba(79, 227, 169, 0.5); }
+.chip.ok .icon { color: var(--op77-ok); }
+.chip.ok .time { background: var(--op77-ok); }
+.chip.warn { border-color: rgba(245, 201, 92, 0.5); }
+.chip.warn .icon { color: var(--op77-warn); }
+.chip.warn .time { background: var(--op77-warn); }
+.chip.bad { border-color: rgba(255, 92, 92, 0.5); }
+.chip.bad .icon { color: var(--op77-danger); }
+.chip.bad .time { background: var(--op77-danger); }
+.chip.accent { border-color: var(--op77-accent-line); }
+.chip.accent .icon { color: var(--op77-accent); }
+.chip.accent .time { background: var(--op77-accent); }
+
+/* Cyberpunk 2077 damage types. `shock` is the one colour not in open77-ui.css:
+   the token file has no cold blue, and the accent is Night City yellow. */
+.chip.bleed { border-color: rgba(255, 92, 92, 0.5); }
+.chip.bleed .icon { color: var(--op77-danger); }
+.chip.bleed .time { background: var(--op77-danger); }
+.chip.burn { border-color: rgba(245, 201, 92, 0.5); }
+.chip.burn .icon { color: var(--op77-warn); }
+.chip.burn .time { background: var(--op77-warn); }
+.chip.chem { border-color: rgba(79, 227, 169, 0.5); }
+.chip.chem .icon { color: var(--op77-ok); }
+.chip.chem .time { background: var(--op77-ok); }
+.chip.shock { --op77-shock: #4ea8ff; border-color: rgba(78, 168, 255, 0.5); }
+.chip.shock .icon { color: var(--op77-shock); }
+.chip.shock .time { background: var(--op77-shock); }
+
+/* What did not fit, counted rather than dropped. */
+.chip.more {
+  background: var(--op77-panel-quiet);
+  border-style: dashed;
+  color: var(--op77-text-faint);
+}
+
+/* The cut corner. Declared after the base .chip above, which it matches on
+   specificity -- keep it below or the cut is lost. */
+.chip {
+  clip-path: polygon(0 0, 100% 0, calc(100% - 10px) 100%, 0 100%);
+  /* the extra 10px pays for the corner the clip-path cuts away */
+  padding-right: calc(var(--op77-space-3) + 10px);
+  border-radius: 0;
+}
