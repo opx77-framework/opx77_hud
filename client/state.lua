@@ -115,9 +115,11 @@ function blocks.money(data, rows)
     seen[key] = true
     order[#order + 1] = key
   end
+  -- strings only: `table.sort` on mixed types raises, and so does `:lower()` on a number --
+  -- both inside the one thread that repairs this surface
   local extra = {}
   for key in pairs(purse) do
-    if not seen[key] then extra[#extra + 1] = key end
+    if type(key) == "string" and not seen[key] then extra[#extra + 1] = key end
   end
   table.sort(extra)
   for _, key in ipairs(extra) do order[#order + 1] = key end

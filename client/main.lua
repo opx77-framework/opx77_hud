@@ -40,6 +40,9 @@ local function sendConfig()
 end
 
 --- What opx77_status published last. It owns the effects; this surface draws them.
+--- The most chips a publisher may put on screen at once.
+local MAX_CHIPS = 12
+
 local effects = { chips = {}, hidden = 0 }
 
 --- Push a frame, or hide.
@@ -109,7 +112,15 @@ end)
 --- has two sources deciding when it repaints.
 AddEventHandler("opx77:status:effects", function(payload)
   if type(payload) ~= "table" then return end
-  local chips = type(payload.chips) == "table" and payload.chips or {}
+  -- bounded: any resource on this machine can raise this name, and the page keeps one
+  -- element per unique chip id forever
+  local chips = {}
+  if type(payload.chips) == "table" then
+    for index, chip in ipairs(payload.chips) do
+      if index > MAX_CHIPS then break end
+      if type(chip) == "table" and chip.id ~= nil then chips[#chips + 1] = chip end
+    end
+  end
   local marks = {}
   for _, chip in ipairs(chips) do
     marks[#marks + 1] = tostring(chip.id) .. "\1" .. tostring(chip.label) .. "\1" ..
@@ -122,7 +133,7 @@ AddEventHandler("opx77:status:effects", function(payload)
     offset = payload.offset,
     signature = table.concat(marks, "\3") .. "\4" .. tostring(payload.hidden or 0),
   }
-  Runtime.draw()
+  draw()
 end)
 
 AddEventHandler("opx77:client:playerUnloaded", function()
