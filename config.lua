@@ -15,4 +15,25 @@ OPX_HUD_CONFIG = {
   BLOCKS = { "vitals", "cyber", "needs", "money", "identity" }, -- remove one to drop it
   NEEDS_THRESHOLD = 90, -- hide a need or cyber gauge above this percent; false always shows it
   COMMAND = "hud", -- chat command that shows and hides the HUD, or false for none
+  -- The game's own HUD, component by component: `false` hides it, `true` puts it back.
+  -- Everything is off by default, because this resource draws the replacement -- left alone
+  -- the two stack, and the player reads their health off two bars that disagree while one of
+  -- them animates.
+  --
+  -- Set `VANILLA = false` to leave the game's HUD entirely alone; remove a line to leave that
+  -- one component alone. What is restored when this resource stops is whatever each component
+  -- was found at, not what is written here.
+  --
+  -- The names are the client's, not ours, and `Open77.hud.components()` is what the client
+  -- answers when asked. A name this client does not recognise is a logged warning and nothing
+  -- else, so an older client is never a script error.
+  VANILLA = {
+    minimap = false,
+    compass = false,
+    clock = false,
+    health = false,
+    stamina = false,
+    weapon = false, -- the weapon and its ammunition count, together
+    speedometer = false,
+  },
 }

@@ -25,6 +25,7 @@ shared_script "config.lua" -- both halves read it: the layout, and the command n
 server_script "server/main.lua" -- the chat command only: there is no client-side RegisterCommand
 
 client_script "client/state.lua"
+client_script "client/vanilla.lua" -- the game's own HUD, off before ours draws over it
 client_script "client/main.lua" -- after state.lua, because main draws what state holds
 client_script "client/exports.lua" -- last: publishing the surface claims it exists
 
@@ -39,7 +40,12 @@ web_ui_auto_create false -- created in client/main.lua, so a failure is one logg
 -- package cache shows it matching this resource's flat web/ files one for one.
 web_files { "web/**" }
 
--- The /hud answer travelling from this resource's server half to its own client
--- half. Nothing on screen comes over the network: the character is read from
+-- `network.events` carries the /hud answer from this resource's server half to its own
+-- client half. Nothing on screen comes over the network: the character is read from
 -- opx77_core's client half through an export, which needs no permission.
-permissions { "network.events" }
+--
+-- `ui.vanilla.hud` is what lets client/vanilla.lua turn the game's own HUD off, so that this
+-- one is not drawn on top of a second health bar and a second clock. It is presentation on
+-- the client that holds it and nothing more -- the same standing as `ui.vanilla.map`, which
+-- open77_blips, open77_example, freeroam and pursuit all declare for the same kind of reason.
+permissions { "network.events", "ui.vanilla.hud" }

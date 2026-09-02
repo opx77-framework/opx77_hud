@@ -52,7 +52,10 @@ RegisterNetEvent("chat:ready", function()
     "Show or hide your HUD", { { name = "on|off", help = "omit to toggle" } })
 end)
 
---- Both departure events: the platform raises two and documents neither.
+--- The one departure event this platform raises. `playerDropped` occurs in the shipped
+--- server binary only inside the platform's own embedded Lua bootstrap, which registers a
+--- handler for a name no assembly ever emits, so a second handler here would be dead code
+--- that made this cleanup look doubly covered.
 ---@param playerId number|string|nil
 local function forget(playerId)
   lastSuggestedMs[tonumber(playerId) or tonumber(source) or -1] = nil
