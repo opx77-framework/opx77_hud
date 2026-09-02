@@ -9,7 +9,21 @@ if type(name) ~= "string" or name == "" then
   return
 end
 
---- Answers the player who typed it; `source` is the authenticated connection.
+--- The scheduler clock in milliseconds; `monotonic` answers SECONDS. A non-finite reading is
+--- dropped rather than propagated: a NaN would expire nothing, an infinity everything.
+---@return integer
+local lastMs = 0
+local function nowMs()
+  local read, seconds = pcall(Open77.time.monotonic)
+  if read and type(seconds) == "number" and seconds == seconds and
+    seconds >= 0 and seconds < math.huge then
+    lastMs = math.floor(seconds * 1000)
+  end
+  return lastMs
+end
+
+--- `/<COMMAND> [on|off]`, omit the argument to toggle; answers the player who typed it.
+--- Registered open: hiding your own HUD is not an operator action.
 RegisterCommand(name, function(source, args, rawCommand)
   local player = tonumber(source) or 0
   if player <= 0 then
@@ -27,38 +41,39 @@ RegisterCommand(name, function(source, args, rawCommand)
       mode = "hide"
     else
       TriggerClientEvent("open77:command:result", player, rawCommand or "", false,
-        "usage: " .. name .. " [on|off]")
+        locale("hud.usage", { command = "/" .. name }))
       return
     end
   end
 
   TriggerClientEvent("opx77_hud:visibility", player, mode)
--- open to every player: hiding your own HUD is not an operator action
 end, false)
 
--- floored: `chat:ready` is a net event, free for a client to send and answered every time
+--- player -> when the suggestion was last sent them.
 local lastSuggestedMs = {}
+
+--- `chat:ready` is a net event and free for a client to send, so it is floored.
+local SUGGEST_RATE_MS = 10000
 
 RegisterNetEvent("chat:ready", function()
   local player = tonumber(source) or 0
   if player <= 0 then return end
 
-  local atMs = math.floor(Open77.time.monotonic() * 1000)
+  local atMs = nowMs()
   local previous = lastSuggestedMs[player]
-  if previous ~= nil and atMs - previous < 10000 then return end
+  if previous ~= nil and atMs - previous < SUGGEST_RATE_MS then return end
   lastSuggestedMs[player] = atMs
 
   TriggerClientEvent("chat:addSuggestion", player, "/" .. name,
-    "Show or hide your HUD", { { name = "on|off", help = "omit to toggle" } })
+    locale("hud.commandHelp"),
+    { { name = "on|off", help = locale("hud.commandArgument") } })
 end)
 
---- The one departure event this platform raises. `playerDropped` occurs in the shipped
---- server binary only inside the platform's own embedded Lua bootstrap, which registers a
---- handler for a name no assembly ever emits, so a second handler here would be dead code
---- that made this cleanup look doubly covered.
----@param playerId number|string|nil
+--- Drop a departed player's rate-limit entry.
+---@param playerId any
 local function forget(playerId)
   lastSuggestedMs[tonumber(playerId) or tonumber(source) or -1] = nil
 end
 
+-- the only departure event this platform raises
 AddEventHandler("onPlayerDisconnected", forget)
