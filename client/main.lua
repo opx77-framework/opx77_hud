@@ -54,7 +54,10 @@ local function draw(force)
   local signature = State.signature(view) .. "\2" .. tostring(effects.signature or "")
   if not force and signature == drawn then return end
   drawn = signature
-  if view == nil and #effects.chips == 0 then
+  -- the whole surface is one element's `open` class, chip strip included, so hiding
+  -- has to be decided on State.visible and not on the view: a live chip must not
+  -- keep a HUD the player turned off on screen
+  if not State.visible or (view == nil and #effects.chips == 0) then
     page:send("hud:hide", {})
     return
   end
@@ -96,7 +99,7 @@ local function pull()
   return true
 end
 
-AddEventHandler("opx77:client:playerLoaded", function(playerData)
+AddEventHandler("opx77:client:onPlayerLoaded", function(playerData)
   if type(playerData) ~= "table" then return end
   State.data = playerData
   draw()
@@ -139,12 +142,13 @@ AddEventHandler("opx77:status:effects", function(payload)
     hidden = tonumber(payload.hidden) or 0,
     anchor = payload.anchor,
     offset = payload.offset,
-    signature = table.concat(marks, "\3") .. "\4" .. tostring(payload.hidden or 0),
+    signature = table.concat(marks, "\3") .. "\4" .. tostring(payload.hidden or 0) ..
+      "\4" .. tostring(payload.anchor or "") .. "\4" .. tostring(payload.offset or ""),
   }
   draw()
 end)
 
-AddEventHandler("opx77:client:playerUnloaded", function()
+AddEventHandler("opx77:client:onPlayerUnloaded", function()
   State.data = nil
   draw()
 end)
@@ -167,7 +171,10 @@ function Runtime.setVisible(value)
   local wanted = value ~= false
   if State.visible == wanted then return State.visible end
   State.visible = wanted
-  draw()
+  -- forced: visibility is not part of the signature, and the frame this has to produce is
+  -- usually identical to the last one except for being hidden. Without the force, turning a
+  -- HUD off while nothing else changed short-circuits and the surface stays up.
+  draw(true)
   return State.visible
 end
 

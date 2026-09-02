@@ -59,4 +59,3 @@ local function forget(playerId)
 end
 
 AddEventHandler("onPlayerDisconnected", forget)
-AddEventHandler("playerDropped", forget)

@@ -75,12 +75,6 @@
   function applyConfig(payload) {
     payload = payload || {};
 
-    strip.className = "strip " + (ANCHORS[text(payload.stripAnchor)] ||
-      ANCHORS[text(payload.anchor)] || ANCHORS["bottom-left"]);
-    var offset = Number(payload.stripOffset);
-    if (isFinite(offset) && offset >= 0) {
-      strip.style.setProperty("--strip-offset", Math.round(offset) + "px");
-    }
     gaugesEl.className = "gauges " + (ANCHORS[text(payload.anchor)] || ANCHORS["bottom-left"]);
     infoEl.className = "info " + (ANCHORS[text(payload.infoAnchor)] || ANCHORS["top-right"]);
     var width = Number(payload.width);
@@ -89,6 +83,29 @@
     }
     var count = Number(payload.segments);
     if (isFinite(count) && count >= 2) segments = Math.round(count);
+    /* hud:config settles where the strip goes until opx77_status has spoken, so it
+       has to run after `anchor` has been read out of this payload. */
+    stripFallback = ANCHORS[text(payload.anchor)] || ANCHORS["bottom-left"];
+    placeStrip(payload);
+  }
+
+  /* Where the strip sits comes off two different messages, and only one of them says
+     anything about the strip itself. hud:config carries the HUD's own corner as
+     `anchor` and nothing else that applies here; opx77_status owns the strip, and
+     until it has published once there is no stripAnchor to be had, so the strip rides
+     in the HUD's corner, lifted clear of the gauges by hud.css's --strip-offset
+     default. hud:frame carries `stripAnchor` and `stripOffset`, which opx77_status
+     published and client/main.lua copies onto every frame from then on. This is the
+     only place the strip element is positioned; keep it that way, or the two messages
+     start disagreeing about the corner again. */
+  var stripFallback = ANCHORS["bottom-left"];
+
+  function placeStrip(payload) {
+    strip.className = "strip " + (ANCHORS[text(payload.stripAnchor)] || stripFallback);
+    var offset = Number(payload.stripOffset);
+    if (isFinite(offset) && offset >= 0) {
+      strip.style.setProperty("--strip-offset", Math.round(offset) + "px");
+    }
   }
 
   /* One element per row id, kept across frames: a fresh node has no previous
@@ -177,15 +194,12 @@
 /* Status effects. opx77_status owns them and sends them with each frame; this
    surface draws them, because a second surface for six words is a second
    surface to place, theme and keep in step. */
-  /* One <li> per chip id, kept across frames: a rebuilt element would restart
-     its entrance animation and its countdown. */
+  /* One <li> per chip id, kept for as long as Lua keeps sending that id: a
+     rebuilt element would restart its entrance animation and its countdown. The
+     entry is dropped the frame the chip stops being sent, because a map that
+     only ever grew would hold detached DOM for every id a publisher ever minted
+     and this file's rAF loop walks the whole of it. */
   var chips = {};
-
-  function span(className) {
-    var node = document.createElement("span");
-    node.className = className;
-    return node;
-  }
 
   function chip(id) {
     var entry = chips[id];
@@ -237,7 +251,10 @@
     }
 
     for (var id in chips) {
-      if (!seen[id] && chips[id].node.parentNode) chips[id].node.remove();
+      if (!seen[id]) {
+        if (chips[id].node.parentNode) chips[id].node.remove();
+        delete chips[id];
+      }
     }
     /* `insertBefore`, never `appendChild`: appending MOVES a node past the slot
        it was meant to take, and the loop never converges on a reversal. */
@@ -284,7 +301,7 @@
     try { applyConfig(payload); } catch (error) { report("config: " + describe(error)); }
   });
   Open77.on("hud:frame", function (payload) {
-    try { render(payload); renderChips(payload); pump(); } catch (error) { report("render: " + describe(error)); }
+    try { render(payload); placeStrip(payload || {}); renderChips(payload); pump(); } catch (error) { report("render: " + describe(error)); }
   });
   Open77.on("hud:hide", function () {
     try { hide(); } catch (error) { report("hide: " + describe(error)); }

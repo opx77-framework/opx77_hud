@@ -15,9 +15,13 @@ State.data = nil
 ---@type boolean
 State.visible = true
 
+--- A finite number: a number, not NaN, and neither infinity. One predicate, spelled the same
+--- way in every resource of this framework; the coercing form that answers with the number
+--- rather than a verdict is called `finiteNumber`.
 ---@param value any
 ---@return boolean
 local function finite(value)
+  -- `value == value` is the NaN check, not a typo: NaN is the one value unequal to itself
   return type(value) == "number" and value == value
     and value > -math.huge and value < math.huge
 end
@@ -76,8 +80,11 @@ local NEED_GAUGES = {
   { key = "thirst", label = "HYDRATION" },
 }
 
---- Hunger and thirst, owned by opx77_status and drawn here. Hidden while comfortable, so a
---- full bar does not sit on screen saying nothing.
+--- Hunger and thirst, drawn here and owned by nothing in this resource. They are character
+--- metadata: opx77_core's server half seeds them and decays them (opx77_core/server/needs.lua),
+--- and they arrive with every GetPlayerData snapshot. opx77_status never touches them -- it owns
+--- the timed chips on the strip, which is a different thing entirely. Hidden while comfortable,
+--- so a full bar does not sit on screen saying nothing.
 ---@param data table
 ---@param rows table
 function blocks.needs(data, rows)
