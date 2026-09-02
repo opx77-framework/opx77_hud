@@ -13,19 +13,19 @@
     "locale",
     "Open77",
     "WebUI",
+    "source",
     "CreateThread",
     "Wait",
     "AddEventHandler",
     "TriggerEvent",
     "RegisterNetEvent",
-    "RegisterCommand",
     "TriggerClientEvent",
+    "RegisterCommand",
     "GetCurrentResourceName",
     "GetResourceState",
     "GetInvokingResource",
     "GetInvokingResourceGeneration",
     "exports",
-    "source",
     "print"
   ],
   "diagnostics.disable": [
@@ -44,7 +44,6 @@
     "quote_style": "double"
   },
   "workspace.ignoreDir": [
-    ".claude",
-    "tools"
+    ".claude"
   ]
 }

@@ -9,7 +9,13 @@ if type(name) ~= "string" or name == "" then
   return
 end
 
+---@return integer
+local function nowMs()
+  return math.floor(Open77.time.monotonic() * 1000)
+end
+
 --- `/<COMMAND> [on|off]`, omit the argument to toggle; answers the player who typed it.
+--- Registered open: hiding your own HUD is not an operator action.
 RegisterCommand(name, function(source, args, rawCommand)
   local player = tonumber(source) or 0
   if player <= 0 then
@@ -33,19 +39,21 @@ RegisterCommand(name, function(source, args, rawCommand)
   end
 
   TriggerClientEvent("opx77_hud:visibility", player, mode)
--- open to every player: hiding your own HUD is not an operator action
 end, false)
 
--- rate limit: `chat:ready` is a net event, free for a client to send
+--- player -> when the suggestion was last sent them.
 local lastSuggestedMs = {}
+
+--- `chat:ready` is a net event and free for a client to send, so it is floored.
+local SUGGEST_RATE_MS = 10000
 
 RegisterNetEvent("chat:ready", function()
   local player = tonumber(source) or 0
   if player <= 0 then return end
 
-  local atMs = math.floor(Open77.time.monotonic() * 1000)
+  local atMs = nowMs()
   local previous = lastSuggestedMs[player]
-  if previous ~= nil and atMs - previous < 10000 then return end
+  if previous ~= nil and atMs - previous < SUGGEST_RATE_MS then return end
   lastSuggestedMs[player] = atMs
 
   TriggerClientEvent("chat:addSuggestion", player, "/" .. name,
@@ -53,10 +61,11 @@ RegisterNetEvent("chat:ready", function()
     { { name = "on|off", help = locale("hud.commandArgument") } })
 end)
 
---- Drop a player's rate-limit entry; `onPlayerDisconnected` is the only departure event raised.
----@param playerId number|string|nil
+--- Drop a departed player's rate-limit entry.
+---@param playerId any
 local function forget(playerId)
   lastSuggestedMs[tonumber(playerId) or tonumber(source) or -1] = nil
 end
 
+-- the only departure event this platform raises
 AddEventHandler("onPlayerDisconnected", forget)

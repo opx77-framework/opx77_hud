@@ -35,11 +35,13 @@ end
 --- A number, not NaN, and neither infinity.
 ---@param value any
 ---@return boolean
-local function finite(value)
+function State.finite(value)
   -- `value == value` is the NaN check: NaN is the one value unequal to itself
   return type(value) == "number" and value == value
     and value > -math.huge and value < math.huge
 end
+
+local finite = State.finite
 
 --- One need opx77_status owns, or nil while it has not answered for this character.
 ---@param key string
@@ -81,6 +83,13 @@ local function tone(value)
   return nil
 end
 
+--- The blocks built, in the order they are listed; anything but a list draws none.
+local BLOCKS = type(Config.BLOCKS) == "table" and Config.BLOCKS or {}
+
+--- The percent a need or cyber gauge is hidden above, or nil to always show it. Anything
+--- that is not a number reads as `false`: a comparison against it would raise, not refuse.
+local THRESHOLD = finite(Config.NEEDS_THRESHOLD) and Config.NEEDS_THRESHOLD or nil
+
 --- One builder per name in `Config.BLOCKS`, each appending rows or nothing.
 local blocks = {}
 
@@ -90,36 +99,31 @@ local blocks = {}
 function blocks.vitals(data, rows)
   local metadata = data.metadata or {}
   local health = percent(metadata.health)
-  rows[#rows + 1] = { kind = "bar", id = "health", label = locale("hud.label.health"),
-                      icon = "health", pct = health, value = tostring(health),
-                      tone = tone(health) }
+  rows[#rows + 1] = { kind = "bar", id = "health", icon = "health", pct = health,
+                      value = tostring(health), tone = tone(health) }
   local armor = percent(metadata.armor)
   if armor > 0 then
-    rows[#rows + 1] = { kind = "bar", id = "armor", label = locale("hud.label.armor"),
-                        icon = "armor", pct = armor, value = tostring(armor) }
+    rows[#rows + 1] = { kind = "bar", id = "armor", icon = "armor", pct = armor,
+                        value = tostring(armor) }
   end
 end
 
---- The two needs and the key each is drawn under.
-local NEED_GAUGES = {
-  { key = "hunger", label = "hud.label.hunger" },
-  { key = "thirst", label = "hud.label.thirst" },
-}
+--- The two needs drawn as gauges, in the order they appear.
+local NEED_GAUGES = { "hunger", "thirst" }
 
 --- Hunger and thirst, from opx77_status, hidden while comfortable and absent while it has
 --- not answered.
 ---@param _ table
 ---@param rows table
 function blocks.needs(_, rows)
-  local threshold = Config.NEEDS_THRESHOLD
   for index = 1, #NEED_GAUGES do
-    local key, label = NEED_GAUGES[index].key, NEED_GAUGES[index].label
+    local key = NEED_GAUGES[index]
     local raw = need(key)
     if raw ~= nil then
       local value = percent(raw)
-      if threshold == false or value <= threshold then
-        rows[#rows + 1] = { kind = "bar", id = key, label = locale(label), icon = key,
-                            pct = value, value = tostring(value), tone = tone(value) }
+      if THRESHOLD == nil or value <= THRESHOLD then
+        rows[#rows + 1] = { kind = "bar", id = key, icon = key, pct = value,
+                            value = tostring(value), tone = tone(value) }
       end
     end
   end
@@ -129,14 +133,12 @@ end
 ---@param _ table
 ---@param rows table
 function blocks.cyber(_, rows)
-  local threshold = Config.NEEDS_THRESHOLD
   local raw = need("stamina")
   if raw == nil then return end
   local value = percent(raw)
-  if threshold == false or value <= threshold then
-    rows[#rows + 1] = { kind = "bar", id = "stamina", label = locale("hud.label.stamina"),
-                        icon = "stamina", pct = value, value = tostring(value),
-                        tone = tone(value) }
+  if THRESHOLD == nil or value <= THRESHOLD then
+    rows[#rows + 1] = { kind = "bar", id = "stamina", icon = "stamina", pct = value,
+                        value = tostring(value), tone = tone(value) }
   end
 end
 
@@ -201,9 +203,8 @@ end
 function State.view()
   if not State.visible or State.data == nil then return nil end
   local rows = {}
-  local names = Config.BLOCKS
-  for index = 1, #names do
-    local build = blocks[names[index]]
+  for index = 1, #BLOCKS do
+    local build = blocks[BLOCKS[index]]
     if build ~= nil then build(State.data, rows) end
   end
   return { rows = rows }

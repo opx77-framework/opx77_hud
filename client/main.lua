@@ -7,7 +7,13 @@ local Config = OPX_HUD_CONFIG
 --- Segments per gauge, and the re-read interval under the core's change events.
 local GAUGE_SEGMENTS = 10
 local POLL_MS = 5000
+
+--- The surface the page is drawn on; a published strip offset is bounded by its height.
+local SURFACE_WIDTH = 1920
+local SURFACE_HEIGHT = 1080
+
 local State = OpxHud.state
+local finite = State.finite
 
 local Runtime = {}
 OpxHud.runtime = Runtime
@@ -16,8 +22,9 @@ local RESOURCE = GetCurrentResourceName()
 local CORE = "opx77_core"
 local STATUS = "opx77_status"
 
---- OPX_STATUS_CONFIG.NEEDS_EVENT; a satellite cannot read another resource's config.
+--- What opx77_status publishes; a satellite cannot read another resource's config.
 local NEEDS_EVENT = "opx77:status:needs"
+local EFFECTS_EVENT = "opx77:status:effects"
 
 local page
 local pageReady = false
@@ -25,13 +32,25 @@ local pageReady = false
 --- The last signature sent to the page, so a change that moves nothing sends nothing.
 local drawn = nil
 
+---@return integer
 local function nowMs()
   return math.floor(Open77.time.monotonic() * 1000)
 end
 
+--- Post one message to the page. Every caller is a forever-thread or an event handler, so a
+--- raise from the host is logged rather than ending it.
+---@param name string
+---@param payload table
+---@return boolean sent
+local function send(name, payload)
+  local ok, reason = pcall(page.send, page, name, payload)
+  if not ok then Open77.log.error("page " .. name .. ": " .. tostring(reason)) end
+  return ok
+end
+
 local function sendConfig()
   if page == nil or not pageReady then return end
-  page:send("hud:config", {
+  send("hud:config", {
     anchor = Config.ANCHOR,
     infoAnchor = Config.INFO_ANCHOR,
     width = Config.WIDTH,
@@ -39,10 +58,12 @@ local function sendConfig()
   })
 end
 
---- The most chips a publisher may put on screen at once.
+--- The most chips a publisher may put on screen at once, and the largest "+N" past them
+--- that still reads as a number.
 local MAX_CHIPS = 12
+local MAX_HIDDEN = 999
 
-local effects = { chips = {}, hidden = 0 }
+local effects = { chips = {}, hidden = 0, signature = "" }
 
 --- Push a frame, or hide.
 ---@param force boolean|nil skip the signature test, for a page whose DOM is new
@@ -50,21 +71,23 @@ local function draw(force)
   if page == nil or not pageReady then return end
   local view = State.view()
   -- the effects join the signature: a chip appearing is a repaint even when no gauge moved
-  local signature = State.signature(view) .. "\2" .. tostring(effects.signature or "")
+  local signature = State.signature(view) .. "\2" .. effects.signature
   if not force and signature == drawn then return end
-  drawn = signature
+  local sent
   -- the whole surface is one element's `open` class, chip strip included, so hiding is
   -- decided on State.visible rather than on the view
   if not State.visible or (view == nil and #effects.chips == 0) then
-    page:send("hud:hide", {})
-    return
+    sent = send("hud:hide", {})
+  else
+    view = view or { rows = {} }
+    view.chips = effects.chips
+    view.hidden = effects.hidden
+    view.stripAnchor = effects.anchor
+    view.stripOffset = effects.offset
+    sent = send("hud:frame", view)
   end
-  view = view or { rows = {} }
-  view.chips = effects.chips
-  view.hidden = effects.hidden
-  view.stripAnchor = effects.anchor
-  view.stripOffset = effects.offset
-  page:send("hud:frame", view)
+  -- a message that did not land leaves the page drawing an older frame
+  drawn = sent and signature or nil
 end
 
 --- One export call. Coroutine only: `await` has no synchronous form.
@@ -112,6 +135,19 @@ local function pullNeeds()
   return true
 end
 
+--- When the core is next re-read, on the client clock.
+local nextPullAtMs = 0
+
+--- One turn of the boot loop. Coroutine only, and always called through `pcall`: a raise from
+--- a host call here would end the loop for the session.
+local function tick()
+  local atMs = nowMs()
+  if atMs < nextPullAtMs then return end
+  nextPullAtMs = atMs + POLL_MS
+  pull()
+  draw()
+end
+
 AddEventHandler("opx77:client:onPlayerLoaded", function(playerData)
   if type(playerData) ~= "table" then return end
   State.data = playerData
@@ -131,8 +167,36 @@ AddEventHandler(NEEDS_EVENT, function(payload)
   draw()
 end)
 
+--- The count of effects past the strip's cut, as the page can draw it. NaN, infinity and a
+--- negative all read as none.
+---@param value any
+---@return integer
+local function hiddenCount(value)
+  local number = tonumber(value)
+  if not finite(number) or number <= 0 then return 0 end
+  if number > MAX_HIDDEN then return MAX_HIDDEN end
+  return math.floor(number)
+end
+
+--- The corner the strip is placed in, or nil to leave it in the HUD's own.
+---@param value any
+---@return string|nil
+local function anchorOf(value)
+  if type(value) ~= "string" or #value > 32 then return nil end
+  return value
+end
+
+--- Pixels the strip sits above the corner, or nil for the page's own placement.
+---@param value any
+---@return number|nil
+local function offsetOf(value)
+  local number = tonumber(value)
+  if not finite(number) or number < 0 or number > SURFACE_HEIGHT then return nil end
+  return number
+end
+
 --- Status chips from opx77_status, carried into the next frame rather than sent on their own.
-AddEventHandler("opx77:status:effects", function(payload)
+AddEventHandler(EFFECTS_EVENT, function(payload)
   if type(payload) ~= "table" then return end
   -- bounded: any resource can raise this name, and the page keeps one element per chip id
   local chips = {}
@@ -149,19 +213,25 @@ AddEventHandler("opx77:status:effects", function(payload)
       end
     end
   end
+
+  local hidden = hiddenCount(payload.hidden)
+  local anchor = anchorOf(payload.anchor)
+  local offset = offsetOf(payload.offset)
+
   local marks = {}
   for index = 1, kept do
     local chip = chips[index]
     marks[index] = tostring(chip.id) .. "\1" .. tostring(chip.label) .. "\1" ..
       tostring(chip.tone or "")
   end
+  -- signed on the values the frame carries, never on the raw payload
   effects = {
     chips = chips,
-    hidden = tonumber(payload.hidden) or 0,
-    anchor = payload.anchor,
-    offset = payload.offset,
-    signature = table.concat(marks, "\3") .. "\4" .. tostring(payload.hidden or 0) ..
-      "\4" .. tostring(payload.anchor or "") .. "\4" .. tostring(payload.offset or ""),
+    hidden = hidden,
+    anchor = anchor,
+    offset = offset,
+    signature = table.concat(marks, "\3") .. "\4" .. tostring(hidden) .. "\4" ..
+      tostring(anchor or "") .. "\4" .. tostring(offset or ""),
   }
   draw()
 end)
@@ -209,8 +279,8 @@ AddEventHandler("onClientResourceStart", function(name)
   page, reason = WebUI.create({
     entry = "web/index.html",
     layer = "hud",
-    width = 1920,
-    height = 1080,
+    width = SURFACE_WIDTH,
+    height = SURFACE_HEIGHT,
     fps = 30,
     zIndex = 705,
     transparent = true,
@@ -235,15 +305,11 @@ AddEventHandler("onClientResourceStart", function(name)
   end)
 
   CreateThread(function()
-    pullNeeds()
-    local nextPullAtMs = 0
+    local ok, failure = pcall(pullNeeds)
+    if not ok then Open77.log.error("needs: " .. tostring(failure)) end
     while page ~= nil do
-      local atMs = nowMs()
-      if atMs >= nextPullAtMs then
-        nextPullAtMs = atMs + POLL_MS
-        pull()
-        draw()
-      end
+      ok, failure = pcall(tick)
+      if not ok then Open77.log.error("loop: " .. tostring(failure)) end
       Wait(500)
     end
   end)

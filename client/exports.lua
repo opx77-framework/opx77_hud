@@ -1,4 +1,5 @@
---- The public surface: control of the rectangle, not of the character drawn in it.
+--- The public export surface: control of the rectangle, not of the character drawn in it.
+--- Every call answers a table carrying `ok` and never raises; the shapes are in types.lua.
 
 local Runtime = OpxHud.runtime
 local Vanilla = OpxHud.vanilla
@@ -14,21 +15,19 @@ end
 
 --- Shows or hides the HUD.
 ---@param value boolean
----@return table ok and the resulting visibility
+---@return HudVisibility
 exports("setVisible", function(value)
   return response(true, { visible = Runtime.setVisible(value) })
 end)
 
 --- Whether the HUD is up.
----@return table ok and the current visibility
+---@return HudVisibility
 exports("isVisible", function()
   return response(true, { visible = Runtime.isVisible() })
 end)
 
 --- What became of the game's own HUD on this client. Read-only.
----@return table `available` false on a client whose `Open77.hud` predates the API,
---- `found` the visibility each component had before this resource touched it, and
---- `state` whatever the client reports right now
+---@return HudVanilla
 exports("vanilla", function()
   return response(true, Vanilla.snapshot())
 end)

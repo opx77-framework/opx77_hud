@@ -22,33 +22,17 @@ It reads `opx77_core` and `opx77_status` and draws. It decides nothing and write
 - Fails quiet: a source that is not running costs a log line, not a broken screen
 - Turns the game's own HUD off at boot, so its health bar and clock are not drawn under this one
 
-## Where the values come from
+## Commands
 
-Two resources, and neither is written to.
+One, and it is open to every player: hiding your own HUD is not an operator action.
 
-| Value | Owner | Read from |
-|---|---|---|
-| `health`, `armor` | `opx77_core` | `metadata` on the character |
-| `money`, `job` | `opx77_core` | the character itself |
-| `hunger`, `thirst`, `stamina`, `streetCred` | `opx77_status` | its `needs` export and event |
+| Command | Gated |
+|---|---|
+| `/hud [on\|off]` | open -- omit the argument to toggle |
 
-`opx77_status` also owns `ram`. This HUD does not draw it: there is no gauge, no icon and no
-label for it.
-
-`opx77_core` is read with its `GetPlayerData` export on a five-second poll, and on
-`opx77:client:onPlayerLoaded`, `opx77:client:playerDataChanged` and
-`opx77:client:onPlayerUnloaded`.
-
-`opx77_status` is read once at start with its `needs` export and after that only from the
-client-local `opx77:status:needs` event, which it raises on every change; there is no second
-poll for a value that is pushed. The status chips arrive the same way, on
-`opx77:status:effects`, capped at twelve per frame.
-
-`opx77_status` is an optional runtime companion, not a dependency. Where it is absent, stopped
-(its `onClientResourceStop` clears them here), or has not answered yet -- a `not_loaded`
-refusal, or an event carrying `ready = false` -- the gauges it owns are left out of the frame
-entirely rather than drawn at zero, and every other block keeps drawing. An empty hunger bar
-is something a player acts on, so it is never shown for a value the HUD does not have.
+The name is yours to change in `config.lua`, and `COMMAND = false` registers nothing. It is
+registered from the server half because the Open77 client runtime installs no
+`RegisterCommand`.
 
 ## Exports
 
@@ -61,6 +45,32 @@ Client exports, all of them returning a table with `ok`.
 
 For a cutscene or a full-screen menu, hide it and show it again after. Nothing may set the
 game's own HUD through an export: this resource hides it because it draws the replacement.
+
+## Where the values come from
+
+Two resources, and neither is written to.
+
+| Value | Owner | Read from |
+|---|---|---|
+| `health`, `armor` | `opx77_core` | `metadata` on the character |
+| `money`, `job` | `opx77_core` | the character itself |
+| `hunger`, `thirst`, `stamina`, `streetCred` | `opx77_status` | its `needs` export and event |
+
+`opx77_core` is read with its `GetPlayerData` export on a five-second poll, and on
+`opx77:client:onPlayerLoaded`, `opx77:client:playerDataChanged` and
+`opx77:client:onPlayerUnloaded`.
+
+`opx77_status` is read once at start with its `needs` export and after that only from the
+client-local `opx77:status:needs` event, which it raises on every change; there is no second
+poll for a value that is pushed. The status chips arrive the same way, on
+`opx77:status:effects`, capped at twelve per frame; the strip's own anchor and offset are
+bounded before they reach the page, since any resource can raise that name.
+
+`opx77_status` is an optional runtime companion, not a dependency. Where it is absent, stopped
+(its `onClientResourceStop` clears them here), or has not answered yet -- a `not_loaded`
+refusal, or an event carrying `ready = false` -- the gauges it owns are left out of the frame
+entirely rather than drawn at zero, and every other block keeps drawing. An empty hunger bar
+is something a player acts on, so it is never shown for a value the HUD does not have.
 
 ## The game's own HUD
 
@@ -88,11 +98,9 @@ you tell those apart.
 - `BLOCKS` -- which blocks are built and in what order: `vitals`, `cyber`, `needs`, `money`,
   `identity`. Remove one to drop it.
 - `NEEDS_THRESHOLD` -- hide a need or cyber gauge above this percent, or `false` to always
-  show it.
+  show it. Anything that is not a number is read as `false`.
 - `LOCALE` -- the catalogue player-facing text is read from: `en` or `fr`.
-- `COMMAND` -- the chat command, or `false` for none. `/<command> [on|off]`, with the
-  argument omitted to toggle; open to every player, since hiding your own HUD is not an
-  operator action.
+- `COMMAND` -- the chat command, or `false` for none. See **Commands** above.
 - `VANILLA` -- the game's own HUD, component by component: `false` hides it, `true` puts it
   back, a removed line leaves that component alone, and `VANILLA = false` leaves the whole
   thing alone.
