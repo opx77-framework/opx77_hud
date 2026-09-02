@@ -2,8 +2,8 @@
 (function () {
   "use strict";
 
-  /* The bridge swallows exceptions thrown in an Open77.on handler, and console
-     output never reaches the client log. */
+  /* Errors are reported to Lua: the bridge swallows handler exceptions and no
+     console output reaches the client log. */
   var reportCount = 0;
   var reporting = false;
 
@@ -49,8 +49,7 @@
     "top-right": "anchor-top-right"
   };
 
-  /* No icon font reaches a page here, so the shapes are inline SVG and Lua
-     sends a name. `currentColor` is what lets the tone rules reach them. */
+  /* Inline SVG: no icon font reaches a page here. `currentColor` carries the tone rules. */
   var ICONS = {
     health: '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6">' +
             '<path d="M8 13.5S2 10 2 6.2A3.2 3.2 0 0 1 8 4.6 3.2 3.2 0 0 1 14 6.2C14 10 8 13.5 8 13.5Z"/></svg>',
@@ -83,21 +82,13 @@
     }
     var count = Number(payload.segments);
     if (isFinite(count) && count >= 2) segments = Math.round(count);
-    /* hud:config settles where the strip goes until opx77_status has spoken, so it
-       has to run after `anchor` has been read out of this payload. */
+    /* must run after `anchor` has been read out of this payload */
     stripFallback = ANCHORS[text(payload.anchor)] || ANCHORS["bottom-left"];
     placeStrip(payload);
   }
 
-  /* Where the strip sits comes off two different messages, and only one of them says
-     anything about the strip itself. hud:config carries the HUD's own corner as
-     `anchor` and nothing else that applies here; opx77_status owns the strip, and
-     until it has published once there is no stripAnchor to be had, so the strip rides
-     in the HUD's corner, lifted clear of the gauges by hud.css's --strip-offset
-     default. hud:frame carries `stripAnchor` and `stripOffset`, which opx77_status
-     published and client/main.lua copies onto every frame from then on. This is the
-     only place the strip element is positioned; keep it that way, or the two messages
-     start disagreeing about the corner again. */
+  /* The strip rides in the HUD's corner until opx77_status publishes a stripAnchor.
+     This is the only place the strip element is positioned. */
   var stripFallback = ANCHORS["bottom-left"];
 
   function placeStrip(payload) {
@@ -108,8 +99,7 @@
     }
   }
 
-  /* One element per row id, kept across frames: a fresh node has no previous
-     computed style to animate from. */
+  /* One element per row id, kept across frames: a fresh node has nothing to animate from. */
   var slots = {};
 
   function span(className) {
@@ -190,15 +180,9 @@
     document.body.classList.remove("open");
   }
 
-/* ------------------------------------------------------------ effects */
-/* Status effects. opx77_status owns them and sends them with each frame; this
-   surface draws them, because a second surface for six words is a second
-   surface to place, theme and keep in step. */
-  /* One <li> per chip id, kept for as long as Lua keeps sending that id: a
-     rebuilt element would restart its entrance animation and its countdown. The
-     entry is dropped the frame the chip stops being sent, because a map that
-     only ever grew would hold detached DOM for every id a publisher ever minted
-     and this file's rAF loop walks the whole of it. */
+  /* Status effects: opx77_status owns them, this surface draws them.
+     One <li> per chip id, kept while Lua keeps sending that id and dropped the
+     frame it stops, so a rebuilt element never restarts its countdown. */
   var chips = {};
 
   function chip(id) {
@@ -212,8 +196,6 @@
     chips[id] = entry;
     return entry;
   }
-
-  var live = [];
 
   function renderChips(payload) {
     payload = payload || {};
@@ -256,20 +238,17 @@
         delete chips[id];
       }
     }
-    /* `insertBefore`, never `appendChild`: appending MOVES a node past the slot
-       it was meant to take, and the loop never converges on a reversal. */
+    /* insertBefore, never appendChild: appending MOVES a node to the end. */
     for (var i = 0; i < order.length; i += 1) {
       if (chipsEl.children[i] !== order[i]) {
         chipsEl.insertBefore(order[i], chipsEl.children[i] || null);
       }
     }
 
-    live = order;
     document.body.classList.add("open");
   }
 
-  /* One rAF loop for every chip on screen; it stops itself once none of them
-     has a deadline left to draw. */
+  /* One rAF loop for every chip on screen; it stops once no deadline is left to draw. */
   function chipFrame() {
     var atMs = Date.now();
     var running = false;
@@ -301,7 +280,12 @@
     try { applyConfig(payload); } catch (error) { report("config: " + describe(error)); }
   });
   Open77.on("hud:frame", function (payload) {
-    try { render(payload); placeStrip(payload || {}); renderChips(payload); pump(); } catch (error) { report("render: " + describe(error)); }
+    try {
+      render(payload);
+      placeStrip(payload || {});
+      renderChips(payload);
+      pump();
+    } catch (error) { report("render: " + describe(error)); }
   });
   Open77.on("hud:hide", function () {
     try { hide(); } catch (error) { report("hide: " + describe(error)); }

@@ -10,6 +10,7 @@
   "diagnostics.globals": [
     "OpxHud",
     "OPX_HUD_CONFIG",
+    "locale",
     "Open77",
     "WebUI",
     "CreateThread",

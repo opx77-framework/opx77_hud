@@ -9,7 +9,7 @@ if type(name) ~= "string" or name == "" then
   return
 end
 
---- Answers the player who typed it; `source` is the authenticated connection.
+--- `/<COMMAND> [on|off]`, omit the argument to toggle; answers the player who typed it.
 RegisterCommand(name, function(source, args, rawCommand)
   local player = tonumber(source) or 0
   if player <= 0 then
@@ -27,7 +27,7 @@ RegisterCommand(name, function(source, args, rawCommand)
       mode = "hide"
     else
       TriggerClientEvent("open77:command:result", player, rawCommand or "", false,
-        "usage: " .. name .. " [on|off]")
+        locale("hud.usage", { command = "/" .. name }))
       return
     end
   end
@@ -36,7 +36,7 @@ RegisterCommand(name, function(source, args, rawCommand)
 -- open to every player: hiding your own HUD is not an operator action
 end, false)
 
--- floored: `chat:ready` is a net event, free for a client to send and answered every time
+-- rate limit: `chat:ready` is a net event, free for a client to send
 local lastSuggestedMs = {}
 
 RegisterNetEvent("chat:ready", function()
@@ -49,13 +49,11 @@ RegisterNetEvent("chat:ready", function()
   lastSuggestedMs[player] = atMs
 
   TriggerClientEvent("chat:addSuggestion", player, "/" .. name,
-    "Show or hide your HUD", { { name = "on|off", help = "omit to toggle" } })
+    locale("hud.commandHelp"),
+    { { name = "on|off", help = locale("hud.commandArgument") } })
 end)
 
---- The one departure event this platform raises. `playerDropped` occurs in the shipped
---- server binary only inside the platform's own embedded Lua bootstrap, which registers a
---- handler for a name no assembly ever emits, so a second handler here would be dead code
---- that made this cleanup look doubly covered.
+--- Drop a player's rate-limit entry; `onPlayerDisconnected` is the only departure event raised.
 ---@param playerId number|string|nil
 local function forget(playerId)
   lastSuggestedMs[tonumber(playerId) or tonumber(source) or -1] = nil

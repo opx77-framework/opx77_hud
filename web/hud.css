@@ -1,7 +1,6 @@
 /* The corner read-outs. Every value comes from open77-ui.css. */
 
-/* Night City yellow, as an accent-role override rather than a literal at each use
-   site: --op77-ink is the text ON this fill. */
+/* Night City yellow, as an accent-role override; --op77-ink is the text ON this fill. */
 :root {
   --op77-accent:      #fcee0a;
   --op77-accent-ice:  #fff761;
@@ -157,8 +156,7 @@ body.open .gauges { transform: none; }
 
 .info .line.on .value { color: var(--op77-ok); }
 
-/* Sheared plates. Declared after the base rule above, which it matches on
-   specificity -- keep it below or the shear is lost. */
+/* Sheared plates: matches the base rule on specificity, so keep it below. */
 .gauge .block {
   clip-path: polygon(4px 0, 100% 0, calc(100% - 4px) 100%, 0 100%);
   border: 0;
@@ -166,10 +164,7 @@ body.open .gauges { transform: none; }
 }
 .gauge .block.on { border: 0; }
 
-/* ---------------------------------------------------------------- effects */
 /* Status effects, owned by opx77_status and drawn on this surface. */
-/* Visibility is body's alone, never a `html, body` group: a transparent root
-   cannot be undone by a child. */
 body.open { opacity: 1; }
 
 .strip {
@@ -182,7 +177,7 @@ body.open { opacity: 1; }
 .strip.anchor-top-left { left: var(--op77-inset-x); }
 .strip.anchor-bottom-right,
 .strip.anchor-top-right { right: var(--op77-inset-x); }
-/* --strip-offset is what keeps this clear of opx77_hud; nothing else coordinates them. */
+/* --strip-offset is what keeps the strip clear of the gauges. */
 .strip.anchor-bottom-left,
 .strip.anchor-bottom-right { bottom: calc(var(--op77-inset-y) + var(--strip-offset, 120px)); }
 .strip.anchor-top-left,
@@ -248,8 +243,7 @@ body.open { opacity: 1; }
 .chip.accent .icon { color: var(--op77-accent); }
 .chip.accent .time { background: var(--op77-accent); }
 
-/* Cyberpunk 2077 damage types. `shock` is the one colour not in open77-ui.css:
-   the token file has no cold blue, and the accent is Night City yellow. */
+/* Cyberpunk 2077 damage types; `shock` is the one colour not in open77-ui.css. */
 .chip.bleed { border-color: rgba(255, 92, 92, 0.5); }
 .chip.bleed .icon { color: var(--op77-danger); }
 .chip.bleed .time { background: var(--op77-danger); }
@@ -270,8 +264,7 @@ body.open { opacity: 1; }
   color: var(--op77-text-faint);
 }
 
-/* The cut corner. Declared after the base .chip above, which it matches on
-   specificity -- keep it below or the cut is lost. */
+/* The cut corner: matches the base .chip on specificity, so keep it below. */
 .chip {
   clip-path: polygon(0 0, 100% 0, calc(100% - 10px) 100%, 0 100%);
   /* the extra 10px pays for the corner the clip-path cuts away */

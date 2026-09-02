@@ -1,4 +1,4 @@
---- What the HUD draws, derived from the character opx77_core owns.
+--- What the HUD draws: the character opx77_core owns, and the needs opx77_status owns.
 
 OpxHud = OpxHud or {}
 
@@ -15,15 +15,40 @@ State.data = nil
 ---@type boolean
 State.visible = true
 
---- A finite number: a number, not NaN, and neither infinity. One predicate, spelled the same
---- way in every resource of this framework; the coercing form that answers with the number
---- rather than a verdict is called `finiteNumber`.
+--- The needs opx77_status last published, or nil while it has none for this character.
+---@type table|nil
+State.needs = nil
+
+--- Whether opx77_status has answered for the live character. False blanks the gauges it
+--- owns instead of drawing them at zero.
+---@type boolean
+State.needsReady = false
+
+--- Adopt what opx77_status published. A refusal or `ready = false` clears the values.
+---@param values table|nil
+---@param ready boolean
+function State.setNeeds(values, ready)
+  State.needsReady = ready == true and type(values) == "table"
+  State.needs = State.needsReady and values or nil
+end
+
+--- A number, not NaN, and neither infinity.
 ---@param value any
 ---@return boolean
 local function finite(value)
-  -- `value == value` is the NaN check, not a typo: NaN is the one value unequal to itself
+  -- `value == value` is the NaN check: NaN is the one value unequal to itself
   return type(value) == "number" and value == value
     and value > -math.huge and value < math.huge
+end
+
+--- One need opx77_status owns, or nil while it has not answered for this character.
+---@param key string
+---@return number|nil
+local function need(key)
+  if not State.needsReady then return nil end
+  local value = State.needs and State.needs[key]
+  if not finite(value) then return nil end
+  return value
 end
 
 --- Clamped to 0..100 and rounded.
@@ -59,66 +84,66 @@ end
 --- One builder per name in `Config.BLOCKS`, each appending rows or nothing.
 local blocks = {}
 
+--- Health, and armour when the character has any.
 ---@param data table
 ---@param rows table
 function blocks.vitals(data, rows)
   local metadata = data.metadata or {}
   local health = percent(metadata.health)
-  rows[#rows + 1] = { kind = "bar", id = "health", label = "HP", icon = "health",
-                      pct = health, value = tostring(health), tone = tone(health) }
+  rows[#rows + 1] = { kind = "bar", id = "health", label = locale("hud.label.health"),
+                      icon = "health", pct = health, value = tostring(health),
+                      tone = tone(health) }
   local armor = percent(metadata.armor)
   if armor > 0 then
-    rows[#rows + 1] = { kind = "bar", id = "armor", label = "ARMOR", icon = "armor",
-                        pct = armor, value = tostring(armor) }
+    rows[#rows + 1] = { kind = "bar", id = "armor", label = locale("hud.label.armor"),
+                        icon = "armor", pct = armor, value = tostring(armor) }
   end
 end
 
---- The two needs and the word each is drawn under. A constant, not a literal inside the
---- loop: written there it was three tables allocated on every frame this block builds.
+--- The two needs and the key each is drawn under.
 local NEED_GAUGES = {
-  { key = "hunger", label = "FOOD" },
-  { key = "thirst", label = "HYDRATION" },
+  { key = "hunger", label = "hud.label.hunger" },
+  { key = "thirst", label = "hud.label.thirst" },
 }
 
---- Hunger and thirst, drawn here and owned by nothing in this resource. They are character
---- metadata: opx77_core's server half seeds them and decays them (opx77_core/server/needs.lua),
---- and they arrive with every GetPlayerData snapshot. opx77_status never touches them -- it owns
---- the timed chips on the strip, which is a different thing entirely. Hidden while comfortable,
---- so a full bar does not sit on screen saying nothing.
----@param data table
+--- Hunger and thirst, from opx77_status, hidden while comfortable and absent while it has
+--- not answered.
+---@param _ table
 ---@param rows table
-function blocks.needs(data, rows)
-  local metadata = data.metadata or {}
+function blocks.needs(_, rows)
   local threshold = Config.NEEDS_THRESHOLD
   for index = 1, #NEED_GAUGES do
     local key, label = NEED_GAUGES[index].key, NEED_GAUGES[index].label
-    if finite(metadata[key]) then
-      local value = percent(metadata[key])
+    local raw = need(key)
+    if raw ~= nil then
+      local value = percent(raw)
       if threshold == false or value <= threshold then
-        rows[#rows + 1] = { kind = "bar", id = key, label = label, icon = key,
+        rows[#rows + 1] = { kind = "bar", id = key, label = locale(label), icon = key,
                             pct = value, value = tostring(value), tone = tone(value) }
       end
     end
   end
 end
 
---- Stamina, drawn only once a gameplay file has put it in metadata.
----@param data table
+--- Stamina, from opx77_status, drawn only once it has answered.
+---@param _ table
 ---@param rows table
-function blocks.cyber(data, rows)
-  local metadata = data.metadata or {}
+function blocks.cyber(_, rows)
   local threshold = Config.NEEDS_THRESHOLD
-  if not finite(metadata.stamina) then return end
-  local value = percent(metadata.stamina)
+  local raw = need("stamina")
+  if raw == nil then return end
+  local value = percent(raw)
   if threshold == false or value <= threshold then
-    rows[#rows + 1] = { kind = "bar", id = "stamina", label = "STAMINA", icon = "stamina",
-                        pct = value, value = tostring(value), tone = tone(value) }
+    rows[#rows + 1] = { kind = "bar", id = "stamina", label = locale("hud.label.stamina"),
+                        icon = "stamina", pct = value, value = tostring(value),
+                        tone = tone(value) }
   end
 end
 
 --- Led with, in this order; the operator's other money types follow sorted.
 local KNOWN_MONEY = { "EDDIES", "BANK" }
 
+--- Every money type the character holds, KNOWN_MONEY first.
 ---@param data table
 ---@param rows table
 function blocks.money(data, rows)
@@ -132,8 +157,7 @@ function blocks.money(data, rows)
     ordered = ordered + 1
     order[ordered] = key
   end
-  -- strings only: `table.sort` on mixed types raises, and so does `:lower()` on a number --
-  -- both inside the one thread that repairs this surface
+  -- strings only: `table.sort` on mixed key types raises
   local extra = {}
   for key in pairs(purse) do
     if type(key) == "string" and not seen[key] then extra[#extra + 1] = key end
@@ -153,6 +177,7 @@ function blocks.money(data, rows)
   end
 end
 
+--- The job line from opx77_core, and street cred from opx77_status.
 ---@param data table
 ---@param rows table
 function blocks.identity(data, rows)
@@ -164,9 +189,9 @@ function blocks.identity(data, rows)
       tone = job.onDuty == true and "on" or nil,
     }
   end
-  local cred = data.metadata and data.metadata.streetCred
-  if finite(cred) and cred > 0 then
-    rows[#rows + 1] = { kind = "text", id = "cred", label = "CRED",
+  local cred = need("streetCred")
+  if cred ~= nil and cred > 0 then
+    rows[#rows + 1] = { kind = "text", id = "cred", label = locale("hud.label.cred"),
                         value = tostring(math.floor(cred)) }
   end
 end
@@ -185,10 +210,11 @@ function State.view()
 end
 
 --- A cheap signature of a view, so main.lua can skip a message that moves nothing.
+--- No view answers "\0": a rowless character and no character at all are different frames.
 ---@param view table|nil
 ---@return string
 function State.signature(view)
-  if view == nil then return "" end
+  if view == nil then return "\0" end
   local rows = view.rows
   local parts = {}
   for index = 1, #rows do
