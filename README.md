@@ -54,17 +54,20 @@ Two resources, and neither is written to.
 |---|---|---|
 | `health`, `armor` | `opx77_core` | `metadata` on the character |
 | `money`, `job` | `opx77_core` | the character itself |
-| `hunger`, `thirst`, `stamina`, `streetCred` | `opx77_status` | its `needs` export and event |
+| `hunger`, `thirst`, `stamina`, `streetCred` | `opx77_status` | its `getNeeds` export and event |
 
-`opx77_core` is read with its `GetPlayerData` export on a five-second poll, and on
+`opx77_core` is read once at start with its `GetPlayerData` export, to catch up on a character
+that loaded before this resource did, and after that only from the client-local
 `opx77:client:onPlayerLoaded`, `opx77:client:playerDataChanged` and
-`opx77:client:onPlayerUnloaded`.
+`opx77:client:onPlayerUnloaded`. There is no poll behind it: the core resends the whole of
+`PlayerData` on every change to health, armour, money and job, and its client half raises
+`playerDataChanged` off that.
 
-`opx77_status` is read once at start with its `needs` export and after that only from the
-client-local `opx77:status:needs` event, which it raises on every change; there is no second
-poll for a value that is pushed. The status chips arrive the same way, on
-`opx77:status:effects`, capped at twelve per frame; the strip's own anchor and offset are
-bounded before they reach the page, since any resource can raise that name.
+`opx77_status` is read the same way: once at start with its `getNeeds` export, and after that
+only from the client-local `opx77:status:needs` event, which it raises on every change. The
+status chips arrive the same way, on `opx77:status:effects`, capped at twelve per frame; the
+strip's own anchor and offset are bounded before they reach the page, since any resource can
+raise that name.
 
 `opx77_status` is an optional runtime companion, not a dependency. Where it is absent, stopped
 (its `onClientResourceStop` clears them here), or has not answered yet -- a `not_loaded`

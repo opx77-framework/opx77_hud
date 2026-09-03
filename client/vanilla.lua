@@ -123,7 +123,10 @@ AddEventHandler("onClientResourceStart", function(name)
   if name ~= RESOURCE then return end
 
   local applied, reason = Vanilla.apply()
-  if reason == "api_absent" then
+  if reason == "config_not_a_table" then
+    Open77.log.warn("vanilla: VANILLA in config.lua is neither a table nor false, so the")
+    Open77.log.warn("  game's own HUD was left exactly as it was.")
+  elseif reason == "api_absent" then
     Open77.log.warn("vanilla: Open77.hud is missing on this client, so the game's own HUD")
     Open77.log.warn("  stays on screen underneath this one. It arrived with the ui.vanilla.hud")
     Open77.log.warn("  capability; a client older than that cannot hide it. Update, or set")

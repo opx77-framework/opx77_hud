@@ -145,33 +145,30 @@ end
 --- Led with, in this order; the operator's other money types follow sorted.
 local KNOWN_MONEY = { "EDDIES", "BANK" }
 
+--- The same names as a set, built once rather than on every frame.
+local KNOWN_SET = {}
+for index = 1, #KNOWN_MONEY do KNOWN_SET[KNOWN_MONEY[index]] = true end
+
 --- Every money type the character holds, KNOWN_MONEY first.
 ---@param data table
 ---@param rows table
 function blocks.money(data, rows)
   local purse = data.money or {}
-  local seen = {}
-  local order = {}
-  local ordered = 0
-  for index = 1, #KNOWN_MONEY do
-    local key = KNOWN_MONEY[index]
-    seen[key] = true
-    ordered = ordered + 1
-    order[ordered] = key
-  end
+  -- allocated only for an operator who configured a money type beyond KNOWN_MONEY, and
   -- strings only: `table.sort` on mixed key types raises
-  local extra = {}
+  local extra
   for key in pairs(purse) do
-    if type(key) == "string" and not seen[key] then extra[#extra + 1] = key end
+    if type(key) == "string" and not KNOWN_SET[key] then
+      extra = extra or {}
+      extra[#extra + 1] = key
+    end
   end
-  table.sort(extra)
-  for index = 1, #extra do
-    ordered = ordered + 1
-    order[ordered] = extra[index]
-  end
+  if extra ~= nil then table.sort(extra) end
 
-  for index = 1, ordered do
-    local key = order[index]
+  local led = #KNOWN_MONEY
+  local total = led + (extra ~= nil and #extra or 0)
+  for index = 1, total do
+    local key = index <= led and KNOWN_MONEY[index] or extra[index - led]
     local amount = purse[key]
     if finite(amount) and amount ~= 0 then
       rows[#rows + 1] = { kind = "text", id = key:lower(), label = key, value = money(amount) }
@@ -217,13 +214,19 @@ end
 function State.signature(view)
   if view == nil then return "\0" end
   local rows = view.rows
+  -- one flat list joined once: six fields per row, so the row count is read back from the
+  -- field count and no separate row separator is needed
   local parts = {}
+  local field = 0
   for index = 1, #rows do
     local row = rows[index]
-    parts[index] = table.concat({
-      row.id, row.label or "", row.value or "", tostring(row.pct or ""), row.tone or "",
-      row.icon or "",
-    }, "\1")
+    parts[field + 1] = row.id
+    parts[field + 2] = row.label or ""
+    parts[field + 3] = row.value or ""
+    parts[field + 4] = row.pct ~= nil and tostring(row.pct) or ""
+    parts[field + 5] = row.tone or ""
+    parts[field + 6] = row.icon or ""
+    field = field + 6
   end
-  return table.concat(parts, "\2")
+  return table.concat(parts, "\1")
 end
