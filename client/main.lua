@@ -4,9 +4,8 @@ OpxHud = OpxHud or {}
 
 local Config = OPX_HUD_CONFIG
 
---- Segments per gauge, and the re-read interval under the core's change events.
+--- Segments per gauge.
 local GAUGE_SEGMENTS = 10
-local POLL_MS = 5000
 
 --- The surface the page is drawn on; a published strip offset is bounded by its height.
 local SURFACE_WIDTH = 1920
@@ -32,20 +31,7 @@ local pageReady = false
 --- The last signature sent to the page, so a change that moves nothing sends nothing.
 local drawn = nil
 
---- The scheduler clock in milliseconds; `monotonic` answers SECONDS. A non-finite reading is
---- dropped rather than propagated: a NaN would expire nothing, an infinity everything.
----@return integer
-local lastMs = 0
-local function nowMs()
-  local read, seconds = pcall(Open77.time.monotonic)
-  if read and type(seconds) == "number" and seconds == seconds and
-    seconds >= 0 and seconds < math.huge then
-    lastMs = math.floor(seconds * 1000)
-  end
-  return lastMs
-end
-
---- Post one message to the page. Every caller is a forever-thread or an event handler, so a
+--- Post one message to the page. Every caller is an event handler or the boot thread, so a
 --- raise from the host is logged rather than ending it.
 ---@param name string
 ---@param payload table
@@ -115,15 +101,15 @@ local function call(resource, name, ...)
   return result, nil, true
 end
 
---- Adopt whatever the core last knew. Coroutine only.
+--- Catch up on the character opx77_core holds. Every later change arrives on one of the
+--- core's local events below, so this runs once rather than on a timer. Coroutine only.
 ---@return boolean ok
----@return string|nil reason
 local function pull()
-  local result, reason, answered = call(CORE, "GetPlayerData")
+  local result, _, answered = call(CORE, "GetPlayerData")
   if result == nil then
     -- only a refusal clears the HUD: a call that never landed says nothing about the character
     if answered then State.data = nil end
-    return false, reason
+    return false
   end
   State.data = result.data
   return true
@@ -133,7 +119,7 @@ end
 --- so this runs once rather than on a timer. Coroutine only.
 ---@return boolean ok
 local function pullNeeds()
-  local result, _, answered = call(STATUS, "needs")
+  local result, _, answered = call(STATUS, "getNeeds")
   if result == nil then
     -- a refusal is authoritative: no character, or the status server has not answered yet
     if answered then State.setNeeds(nil, false) end
@@ -141,19 +127,6 @@ local function pullNeeds()
   end
   State.setNeeds(result.values, result.ready == true)
   return true
-end
-
---- When the core is next re-read, on the client clock.
-local nextPullAtMs = 0
-
---- One turn of the boot loop. Coroutine only, and always called through `pcall`: a raise from
---- a host call here would end the loop for the session.
-local function tick()
-  local atMs = nowMs()
-  if atMs < nextPullAtMs then return end
-  nextPullAtMs = atMs + POLL_MS
-  pull()
-  draw()
 end
 
 AddEventHandler("opx77:client:onPlayerLoaded", function(playerData)
@@ -226,20 +199,27 @@ AddEventHandler(EFFECTS_EVENT, function(payload)
   local anchor = anchorOf(payload.anchor)
   local offset = offsetOf(payload.offset)
 
+  -- one flat list joined once: three fields per chip, then the three the strip carries
   local marks = {}
+  local field = 0
   for index = 1, kept do
     local chip = chips[index]
-    marks[index] = tostring(chip.id) .. "\1" .. tostring(chip.label) .. "\1" ..
-      tostring(chip.tone or "")
+    marks[field + 1] = tostring(chip.id)
+    marks[field + 2] = tostring(chip.label)
+    marks[field + 3] = tostring(chip.tone or "")
+    field = field + 3
   end
+  marks[field + 1] = tostring(hidden)
+  marks[field + 2] = tostring(anchor or "")
+  marks[field + 3] = tostring(offset or "")
+
   -- signed on the values the frame carries, never on the raw payload
   effects = {
     chips = chips,
     hidden = hidden,
     anchor = anchor,
     offset = offset,
-    signature = table.concat(marks, "\3") .. "\4" .. tostring(hidden) .. "\4" ..
-      tostring(anchor or "") .. "\4" .. tostring(offset or ""),
+    signature = table.concat(marks, "\1"),
   }
   draw()
 end)
@@ -312,14 +292,14 @@ AddEventHandler("onClientResourceStart", function(name)
     Open77.log.info("page: " .. tostring(payload.text or ""))
   end)
 
+  -- one read of each source, for a character that loaded before this resource did; every
+  -- later change arrives on an event handled above
   CreateThread(function()
     local ok, failure = pcall(pullNeeds)
     if not ok then Open77.log.error("needs: " .. tostring(failure)) end
-    while page ~= nil do
-      ok, failure = pcall(tick)
-      if not ok then Open77.log.error("loop: " .. tostring(failure)) end
-      Wait(500)
-    end
+    ok, failure = pcall(pull)
+    if not ok then Open77.log.error("core: " .. tostring(failure)) end
+    draw()
   end)
 end)
 

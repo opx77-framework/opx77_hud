@@ -87,7 +87,7 @@
 ---@field stamina number     0-100
 ---@field streetCred number  0-100000
 
---- What the `needs` export of opx77_status answers, and the payload of `opx77:status:needs`.
+--- What the `getNeeds` export of opx77_status answers, and the payload of `opx77:status:needs`.
 --- `ready` false blanks the gauges it owns rather than drawing them at zero.
 ---@class NeedsSnapshot
 ---@field ok boolean|nil          on the export's answer only
