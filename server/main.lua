@@ -66,7 +66,7 @@ RegisterNetEvent("chat:ready", function()
 
   TriggerClientEvent("chat:addSuggestion", player, "/" .. name,
     locale("hud.commandHelp"),
-    { { name = "on|off", help = locale("hud.commandArgument") } })
+    { { name = "on|off", help = locale("hud.commandArgument"), optional = true } })
 end)
 
 --- Drop a departed player's rate-limit entry.
