@@ -49,8 +49,8 @@ and a press while another surface holds the keyboard — the chat box, a form, t
 does nothing. `KEYS.TOGGLE` in `config.lua` sets the default, which a player's own rebind
 overrides; `KEYS.TOGGLE = false` registers no mapping, and a value that is neither a key name
 nor `false` is a client log warning and the default. F8 sits clear of the keys the rest of a
-stock resource set takes: F2 wardrobe, F3 animation picker, F6 perspective, F7 appearance panel,
-F10 staff menu, F11 voice mode, X stop animation, V push-to-talk, ALT context menu.
+stock resource set takes: F2 wardrobe, F3 animation picker, F6 perspective, F9 staff menu,
+F11 voice mode, X stop animation, V push-to-talk, ALT context menu.
 
 ## Exports
 
