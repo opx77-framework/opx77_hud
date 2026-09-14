@@ -17,7 +17,8 @@ It reads `opx77_core` and `opx77_status` and draws. It decides nothing and write
 ## Features
 
 - Hidden on connection, up once a character is selected, down again on logout
-- A `/hud` command so a player can hide it, whose choice survives a character switch
+- A `/hud` command and a rebindable key, F8 by default, so a player can hide it; the choice
+  survives a character switch
 - Segmented gauges that read at a glance over a moving scene
 - Fails quiet: a source that is not running costs a log line, not a broken screen
 - Turns the game's own HUD off at boot, so its health bar and clock are not drawn under this one
@@ -33,6 +34,23 @@ One, and it is open to every player: hiding your own HUD is not an operator acti
 The name is yours to change in `config.lua`, and `COMMAND = false` registers nothing. It is
 registered from the server half because the Open77 client runtime installs no
 `RegisterCommand`.
+
+## Keys
+
+| Mapping id | Name in the pause menu | Default | Does |
+|---|---|---|---|
+| `opx77_hud.toggle` | *HUD: show or hide* | `F8` | what `/hud` with no argument does |
+
+The key is declared with `RegisterKeyMapping`, so the pause menu's key bindings tab lists it
+under the name above — read from the configured locale when the resource starts — and every
+player can rebind it there; it needs the `input.actions` capability, which the manifest
+declares. It toggles on the client, without the round trip the command makes,
+and a press while another surface holds the keyboard — the chat box, a form, the pause menu —
+does nothing. `KEYS.TOGGLE` in `config.lua` sets the default, which a player's own rebind
+overrides; `KEYS.TOGGLE = false` registers no mapping, and a value that is neither a key name
+nor `false` is a client log warning and the default. F8 sits clear of the keys the rest of a
+stock resource set takes: F2 wardrobe, F3 animation picker, F6 perspective, F7 appearance panel,
+F10 staff menu, F11 voice mode, X stop animation, V push-to-talk, ALT context menu.
 
 ## Exports
 
@@ -104,6 +122,7 @@ you tell those apart.
   show it. Anything that is not a number is read as `false`.
 - `LOCALE` -- the catalogue player-facing text is read from: `en` or `fr`.
 - `COMMAND` -- the chat command, or `false` for none. See **Commands** above.
+- `KEYS.TOGGLE` -- the show/hide key's default, or `false` for none. See **Keys** above.
 - `VANILLA` -- the game's own HUD, component by component: `false` hides it, `true` puts it
   back, a removed line leaves that component alone, and `VANILLA = false` leaves the whole
   thing alone.

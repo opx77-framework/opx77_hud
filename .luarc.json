@@ -21,6 +21,7 @@
     "RegisterNetEvent",
     "TriggerClientEvent",
     "RegisterCommand",
+    "RegisterKeyMapping",
     "GetCurrentResourceName",
     "GetResourceState",
     "GetInvokingResource",
