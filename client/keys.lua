@@ -50,8 +50,12 @@ function Keys.register(id, nameKey, key, onPressed)
     local ran, failure = pcall(onPressed)
     if not ran then Open77.log.error(("key %s: %s"):format(id, tostring(failure))) end
   end
+  -- two documented shapes: the key guide answers `true, key`, the API reference the key alone;
+  -- either one is a registration, and `false|nil, reason` is a refusal
   local called, ok, answer = pcall(RegisterKeyMapping, id, locale(nameKey), key, pressed)
-  if not called or ok ~= true then
+  local effective = type(ok) == "string" and ok ~= "" and ok or
+    (ok == true and type(answer) == "string" and answer ~= "" and answer) or nil
+  if not called or (ok ~= true and effective == nil) then
     Open77.log.warn(("key mapping %s (%s) not registered: %s"):format(id, key,
       tostring(called and answer or ok)))
     return false
