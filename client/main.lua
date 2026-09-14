@@ -25,6 +25,7 @@ OpxHud.runtime = Runtime
 local RESOURCE = GetCurrentResourceName()
 local CORE = "opx77_core"
 local STATUS = "opx77_status"
+local NOTIFY = "opx77_notify"
 
 --- What opx77_status publishes; a satellite cannot read another resource's config.
 local NEEDS_EVENT = "opx77:status:needs"
@@ -104,6 +105,47 @@ local function call(resource, name, ...)
   if type(result) ~= "table" then return nil, "malformed_answer", true end
   if result.ok == false then return nil, tostring(result.error or "refused"), true end
   return result, nil, true
+end
+
+--- Whether a toast that could not be raised has been logged: one line, not one per answer.
+local notifyReported = false
+
+--- The chat line an answer was before it was a toast, for when there is no toast to raise.
+---@param kind "info"|"success"|"warning"|"error"
+---@param message string
+local function chatLine(kind, message)
+  local accepted = kind == "info" or kind == "success"
+  TriggerEvent("chat:addMessage", {
+    type = accepted and "info" or "error",
+    author = locale("hud.title"),
+    text = message,
+    color = accepted and { 120, 220, 232 } or { 255, 76, 92 },
+  })
+end
+
+--- Tell the player something: a toast through opx77_notify while it runs and NOTIFY allows,
+--- a chat line otherwise. Best-effort, never a dependency.
+---@param kind "info"|"success"|"warning"|"error"
+---@param message string
+function Runtime.notify(kind, message)
+  if Config.NOTIFY == false then return chatLine(kind, message) end
+  CreateThread(function()
+    local _, failure = call(NOTIFY, "show", {
+      -- one slot, replaced: a player repeating a typo sees one toast, not a stack
+      id = "opx77_hud.answer",
+      replace = true,
+      type = kind,
+      title = locale("hud.title"),
+      message = message,
+      durationMs = 5000,
+    })
+    if failure == nil then return end
+    if not notifyReported then
+      notifyReported = true
+      Open77.log.warn(("no toast (%s): answers go to the chat box instead"):format(failure))
+    end
+    chatLine(kind, message)
+  end)
 end
 
 --- Catch up on the character opx77_core holds. Every later change arrives on one of the
@@ -245,6 +287,17 @@ RegisterNetEvent("opx77_hud:visibility", function(mode)
   elseif mode == "toggle" then
     Runtime.setVisible(not State.visible)
   end
+end)
+
+--- A refusal of `/hud` from this resource's own server half, already in the configured locale.
+---@param kind string
+---@param message string
+RegisterNetEvent("opx77_hud:notice", function(kind, message)
+  if type(message) ~= "string" or message == "" then return end
+  if kind ~= "info" and kind ~= "success" and kind ~= "warning" and kind ~= "error" then
+    kind = "info"
+  end
+  Runtime.notify(kind, message)
 end)
 
 --- Shows or hides the HUD.

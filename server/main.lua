@@ -40,7 +40,8 @@ RegisterCommand(name, function(source, args, rawCommand)
     elseif wanted == "off" or wanted == "hide" then
       mode = "hide"
     else
-      TriggerClientEvent("open77:command:result", player, rawCommand or "", false,
+      -- a toast the client half raises, not a chat line: the chat is for what players say
+      TriggerClientEvent("opx77_hud:notice", player, "warning",
         locale("hud.usage", { command = "/" .. name }))
       return
     end

@@ -35,6 +35,11 @@ The name is yours to change in `config.lua`, and `COMMAND = false` registers not
 registered from the server half because the Open77 client runtime installs no
 `RegisterCommand`.
 
+An argument it does not recognise is answered with a warning toast carrying the usage, raised
+through `opx77_notify` by the client half; showing or hiding answers nothing, since the HUD
+going up or down is the answer. `opx77_notify` stays optional: while it is stopped, or with
+`NOTIFY = false`, the same text is a chat line instead, and the client log says so once.
+
 ## Keys
 
 | Mapping id | Name in the pause menu | Default | Does |
@@ -122,6 +127,8 @@ you tell those apart.
   show it. Anything that is not a number is read as `false`.
 - `LOCALE` -- the catalogue player-facing text is read from: `en` or `fr`.
 - `COMMAND` -- the chat command, or `false` for none. See **Commands** above.
+- `NOTIFY` -- the command's refusal as an `opx77_notify` toast (`true`, the default), or
+  `false` for a chat line. See **Commands** above.
 - `KEYS.TOGGLE` -- the show/hide key's default, or `false` for none. See **Keys** above.
 - `VANILLA` -- the game's own HUD, component by component: `false` hides it, `true` puts it
   back, a removed line leaves that component alone, and `VANILLA = false` leaves the whole
