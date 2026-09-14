@@ -9,6 +9,10 @@ OPX_HUD_CONFIG = {
   -- number, always shows it
   NEEDS_THRESHOLD = 90,
   COMMAND = "hud", -- chat command that shows and hides the HUD, or false for none
+  -- Default keys, which each player can rebind in the pause menu; false registers none
+  KEYS = {
+    TOGGLE = "F8", -- show or hide the HUD, like the command with no argument
+  },
   -- The game's own HUD, component by component: `false` hides it, `true` puts it back.
   -- `VANILLA = false` leaves the game's HUD alone; a removed line leaves that component alone.
   VANILLA = {

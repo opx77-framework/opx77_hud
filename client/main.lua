@@ -13,6 +13,11 @@ local SURFACE_HEIGHT = 1080
 
 local State = OpxHud.state
 local finite = State.finite
+local Keys = OpxHud.keys
+
+--- The mapping that shows and hides the HUD. The id is stable: a player's rebind is stored
+--- under it.
+local KEY_TOGGLE = "opx77_hud.toggle"
 
 local Runtime = {}
 OpxHud.runtime = Runtime
@@ -259,6 +264,20 @@ end
 function Runtime.isVisible()
   return State.visible
 end
+
+--- The key does what `/hud` with no argument does, here rather than through the server: that
+--- command decides nothing, it only sends this client back a toggle.
+AddEventHandler("onClientResourceStart", function(name)
+  if name ~= RESOURCE then return end
+  local keys = Config.KEYS
+  if keys ~= nil and type(keys) ~= "table" then
+    Open77.log.warn("config: KEYS must be a table; using the default key")
+    keys = nil
+  end
+  keys = keys or {}
+  Keys.register(KEY_TOGGLE, "hud.key.toggle", Keys.setting("KEYS.TOGGLE", keys.TOGGLE, "F8"),
+    function() Runtime.setVisible(not State.visible) end)
+end)
 
 AddEventHandler("onClientResourceStart", function(name)
   if name ~= RESOURCE then return end

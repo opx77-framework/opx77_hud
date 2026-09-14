@@ -1,5 +1,5 @@
 resource "opx77_hud"
-version "0.3.0"
+version "0.4.0"
 open77_version ">=0.0.1"
 auto_start true
 
@@ -16,6 +16,7 @@ server_script "server/main.lua"
 
 client_script "client/state.lua"
 client_script "client/vanilla.lua" -- the game's own HUD, off before ours draws over it
+client_script "client/keys.lua" -- before main.lua, which registers the toggle key through it
 client_script "client/main.lua" -- after state.lua, because main draws what state holds
 client_script "client/exports.lua" -- last: publishing the surface claims it exists
 
@@ -28,4 +29,7 @@ web_files { "web/**" }
 permissions {
   "network.events", -- the /hud answer, from the server half to this resource's own client half
   "ui.vanilla.hud", -- client/vanilla.lua hides the game's own HUD so it is not drawn under ours
+  -- client/keys.lua: RegisterKeyMapping for the show/hide key, and isCaptured, so the key
+  -- typed into chat or a form does not hide the HUD
+  "input.actions",
 }
