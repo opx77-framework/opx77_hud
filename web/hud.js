@@ -85,6 +85,135 @@
     /* must run after `anchor` has been read out of this payload */
     stripFallback = ANCHORS[text(payload.anchor)] || ANCHORS["bottom-left"];
     placeStrip(payload);
+
+    var voiceCount = Number(payload.voiceSegments);
+    if (isFinite(voiceCount) && voiceCount >= 2) voiceCells = cells(voiceMeter, Math.round(voiceCount));
+    var rpmCount = Number(payload.rpmSegments);
+    if (isFinite(rpmCount) && rpmCount >= 2) rpmCells = cells(vehicleRefs.rpm, Math.round(rpmCount));
+    vehicleEl.className = "vehicle " + (ANCHORS[text(payload.vehicleAnchor)] || ANCHORS["bottom-right"]) +
+      (vehicleEl.classList.contains("live") ? " live" : "");
+  }
+
+  /* Replaces a container's children with `count` plain segments and answers them. */
+  function cells(parent, count) {
+    var made = [];
+    while (parent.firstChild) parent.removeChild(parent.firstChild);
+    for (var index = 0; index < count; index += 1) {
+      var cell = span("block");
+      made.push(cell);
+      parent.appendChild(cell);
+    }
+    return made;
+  }
+
+  function light(list, lit) {
+    for (var index = 0; index < list.length; index += 1) {
+      var wanted = index < lit ? "block on" : "block";
+      if (list[index].className !== wanted) list[index].className = wanted;
+    }
+  }
+
+  function setText(node, value) {
+    var wanted = text(value);
+    if (node.textContent !== wanted) node.textContent = wanted;
+  }
+
+  /* Voice: Lua decides the state and every word; this only lights what it is told. */
+  var VOICE_STATES = ["idle", "detected", "talking", "muted", "offline"];
+  var voiceEl = document.getElementById("voice");
+  var voiceMeter = document.getElementById("voice-meter");
+  var voiceRefs = {
+    caption: document.getElementById("voice-caption"),
+    mode: document.getElementById("voice-mode"),
+    distance: document.getElementById("voice-distance"),
+    pips: document.getElementById("voice-pips"),
+    key: document.getElementById("voice-key"),
+    ptt: document.getElementById("voice-ptt"),
+    heard: document.getElementById("voice-heard"),
+    heardCount: document.getElementById("voice-heard-count")
+  };
+  var voiceCells = cells(voiceMeter, 8);
+  var voicePips = [];
+
+  function renderVoice(payload) {
+    payload = payload || {};
+    if (payload.active !== true) {
+      voiceEl.classList.remove("live");
+      return;
+    }
+    var state = VOICE_STATES.indexOf(text(payload.state)) >= 0 ? text(payload.state) : "offline";
+    var wanted = "voice live state-" + state;
+    if (voiceEl.className !== wanted) voiceEl.className = wanted;
+
+    setText(voiceRefs.caption, payload.caption);
+    setText(voiceRefs.mode, payload.mode);
+    setText(voiceRefs.distance, payload.distance);
+    voiceRefs.distance.hidden = !payload.distance;
+    light(voiceCells, Number(payload.lit) || 0);
+
+    var count = Math.max(0, Math.min(8, Math.round(Number(payload.count) || 0)));
+    if (voicePips.length !== count) voicePips = cells(voiceRefs.pips, count);
+    light(voicePips, Math.round(Number(payload.index) || 0));
+    voiceRefs.pips.hidden = count === 0;
+
+    setText(voiceRefs.key, payload.key);
+    voiceRefs.key.hidden = !payload.key;
+    setText(voiceRefs.ptt, payload.activation);
+    voiceRefs.ptt.hidden = !payload.activation;
+
+    var heard = Math.max(0, Math.round(Number(payload.heard) || 0));
+    setText(voiceRefs.heardCount, heard);
+    voiceRefs.heard.hidden = heard === 0;
+  }
+
+  /* Vehicle: shown only while Lua says the character sits in one. */
+  var vehicleEl = document.getElementById("vehicle");
+  var vehicleRefs = {
+    speed: document.getElementById("vehicle-speed"),
+    unit: document.getElementById("vehicle-unit"),
+    gear: document.getElementById("vehicle-gear"),
+    rpmRow: document.getElementById("vehicle-rpm-row"),
+    rpm: document.getElementById("vehicle-rpm"),
+    rpmLabel: document.getElementById("vehicle-rpm-label"),
+    integrityRow: document.getElementById("vehicle-integrity-row"),
+    integrityLabel: document.getElementById("vehicle-integrity-label"),
+    integrity: document.getElementById("vehicle-integrity"),
+    air: document.getElementById("vehicle-air")
+  };
+  var rpmCells = cells(vehicleRefs.rpm, 10);
+
+  function renderVehicle(payload) {
+    payload = payload || {};
+    if (payload.active !== true) {
+      vehicleEl.classList.remove("live");
+      return;
+    }
+    vehicleEl.classList.add("live");
+    setText(vehicleRefs.speed, Math.max(0, Math.round(Number(payload.speed) || 0)));
+    setText(vehicleRefs.unit, payload.unit);
+
+    var gear = text(payload.gear) || "N";
+    setText(vehicleRefs.gear, gear);
+    vehicleRefs.gear.className = "vehicle-gear" + (gear === "R" ? " reverse" : gear === "N" ? " neutral" : "");
+
+    var hasRpm = typeof payload.rpm === "number";
+    vehicleRefs.rpmRow.hidden = !hasRpm;
+    if (hasRpm) {
+      // rounded up, like the gauges: a turning engine never reads as stopped
+      light(rpmCells, Math.ceil(Math.max(0, Math.min(100, payload.rpm)) / 100 * rpmCells.length));
+      setText(vehicleRefs.rpmLabel, payload.rpmLabel);
+    }
+
+    var hasIntegrity = typeof payload.integrity === "number";
+    vehicleRefs.integrityRow.hidden = !hasIntegrity;
+    if (hasIntegrity) {
+      setText(vehicleRefs.integrityLabel, payload.integrityLabel);
+      setText(vehicleRefs.integrity, Math.round(payload.integrity) + "%");
+      vehicleRefs.integrityRow.className = "vehicle-integrity" + (payload.tone ? " " + text(payload.tone) : "");
+    }
+
+    setText(vehicleRefs.air, payload.airborne === true ? payload.airborneLabel : "");
+    vehicleRefs.air.hidden = payload.airborne !== true;
   }
 
   /* The strip rides in the HUD's corner until opx77_status publishes a stripAnchor.
@@ -286,6 +415,12 @@
       renderChips(payload);
       pump();
     } catch (error) { report("render: " + describe(error)); }
+  });
+  Open77.on("hud:voice", function (payload) {
+    try { renderVoice(payload); } catch (error) { report("voice: " + describe(error)); }
+  });
+  Open77.on("hud:vehicle", function (payload) {
+    try { renderVehicle(payload); } catch (error) { report("vehicle: " + describe(error)); }
   });
   Open77.on("hud:hide", function () {
     try { hide(); } catch (error) { report("hide: " + describe(error)); }

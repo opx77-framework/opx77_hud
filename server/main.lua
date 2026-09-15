@@ -1,79 +1,91 @@
---- The server half: the chat command, which cannot be registered client-side.
+--- @author DemiAutomatic
+--- @file server/main.lua
+--- @description The server half: the show and hide chat command and its suggestion.
 
 local Config = OPX_HUD_CONFIG
 
+--- @author DemiAutomatic
+--- @type {string|false}
+--- @description The configured command name, or false for none.
 local name = Config.COMMAND
 
-if type(name) ~= "string" or name == "" then
-  Open77.log.info("no command registered (OPX_HUD_CONFIG.COMMAND is off)")
-  return
+if type(name) ~= 'string' or name == '' then
+	Open77.log.info('no command registered (OPX_HUD_CONFIG.COMMAND is off)')
+	return
 end
 
---- The scheduler clock in milliseconds; `monotonic` answers SECONDS. A non-finite reading is
---- dropped rather than propagated: a NaN would expire nothing, an infinity everything.
----@return integer
-local lastMs = 0
-local function nowMs()
-  local read, seconds = pcall(Open77.time.monotonic)
-  if read and type(seconds) == "number" and seconds == seconds and
-    seconds >= 0 and seconds < math.huge then
-    lastMs = math.floor(seconds * 1000)
-  end
-  return lastMs
-end
-
---- `/<COMMAND> [on|off]`, omit the argument to toggle; answers the player who typed it.
---- Registered open: hiding your own HUD is not an operator action.
+--- @author DemiAutomatic
+--- @command OPX_HUD_CONFIG.COMMAND
+--- @description Resolves on, off or toggle and sends it to the caller.
+--- @param source {integer|string}
+--- @param args {string[]|nil}
+--- @param rawCommand {string}
 RegisterCommand(name, function(source, args, rawCommand)
-  local player = tonumber(source) or 0
-  if player <= 0 then
-    Open77.log.info("/" .. name .. " is a player command")
-    return
-  end
+	local player = tonumber(source) or 0
+	if player <= 0 then
+		Open77.log.info('/' .. name .. ' is a player command')
+		return
+	end
 
-  local wanted = args and args[1]
-  local mode = "toggle"
-  if wanted ~= nil then
-    wanted = tostring(wanted):lower()
-    if wanted == "on" or wanted == "show" then
-      mode = "show"
-    elseif wanted == "off" or wanted == "hide" then
-      mode = "hide"
-    else
-      TriggerClientEvent("open77:command:result", player, rawCommand or "", false,
-        locale("hud.usage", { command = "/" .. name }))
-      return
-    end
-  end
+	local wanted = args and args[1]
+	local mode = 'toggle'
+	if wanted ~= nil then
+		wanted = tostring(wanted):lower()
+		if wanted == 'on' or wanted == 'show' then
+			mode = 'show'
+		elseif wanted == 'off' or wanted == 'hide' then
+			mode = 'hide'
+		else
+			TriggerClientEvent('opx77_hud:notice', player, 'warning',
+				locale('hud.usage', { command = '/' .. name }))
+			return
+		end
+	end
 
-  TriggerClientEvent("opx77_hud:visibility", player, mode)
+	TriggerClientEvent('opx77_hud:visibility', player, mode)
 end, false)
 
---- player -> when the suggestion was last sent them.
+--- @author DemiAutomatic
+--- @type {table<integer, integer>}
+--- @description When the suggestion was last sent, per player.
 local lastSuggestedMs = {}
 
---- `chat:ready` is a net event and free for a client to send, so it is floored.
+--- @author DemiAutomatic
+--- @type {integer}
+--- @description Milliseconds before one player is sent the suggestion again.
 local SUGGEST_RATE_MS = 10000
 
-RegisterNetEvent("chat:ready", function()
-  local player = tonumber(source) or 0
-  if player <= 0 then return end
+--- @author DemiAutomatic
+--- @event chat:ready
+--- @description Sends the command's chat suggestion to a player, rate limited.
+RegisterNetEvent('chat:ready', function()
+	local player = tonumber(source) or 0
+	if player <= 0 then return end
 
-  local atMs = nowMs()
-  local previous = lastSuggestedMs[player]
-  if previous ~= nil and atMs - previous < SUGGEST_RATE_MS then return end
-  lastSuggestedMs[player] = atMs
+	local atMs = GetGameTimer()
+	local previous = lastSuggestedMs[player]
+	if previous ~= nil and atMs - previous < SUGGEST_RATE_MS then return end
+	lastSuggestedMs[player] = atMs
 
-  TriggerClientEvent("chat:addSuggestion", player, "/" .. name,
-    locale("hud.commandHelp"),
-    { { name = "on|off", help = locale("hud.commandArgument"), optional = true } })
+	TriggerClientEvent('chat:addSuggestion', player, '/' .. name,
+		locale('hud.commandHelp'),
+		{ { name = 'on|off', help = locale('hud.commandArgument'), optional = true } })
 end)
 
---- Drop a departed player's rate-limit entry.
----@param playerId any
+--- @author DemiAutomatic
+--- @method forget
+--- @description Drops a departed player's suggestion rate limit entry.
+--- @param playerId {string}
 local function forget(playerId)
-  lastSuggestedMs[tonumber(playerId) or tonumber(source) or -1] = nil
+	local player = tonumber(playerId)
+	if player == nil then
+		Open77.log.warn(('onPlayerDisconnected: unusable player id %q'):format(tostring(playerId)))
+		return
+	end
+	lastSuggestedMs[player] = nil
 end
 
--- the only departure event this platform raises
-AddEventHandler("onPlayerDisconnected", forget)
+--- @author DemiAutomatic
+--- @event onPlayerDisconnected
+--- @description Forgets a departing player's suggestion rate limit.
+AddEventHandler('onPlayerDisconnected', forget)

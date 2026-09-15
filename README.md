@@ -20,6 +20,7 @@ It reads `opx77_core` and `opx77_status` and draws. It decides nothing and write
 - A `/hud` command and a rebindable key, F8 by default, so a player can hide it; the choice
   survives a character switch
 - Segmented gauges that read at a glance over a moving scene
+- Off screen while `opx77_medic` has the player down, and back as the player left it on revival
 - Fails quiet: a source that is not running costs a log line, not a broken screen
 - Turns the game's own HUD off at boot, so its health bar and clock are not drawn under this one
 
@@ -34,6 +35,11 @@ One, and it is open to every player: hiding your own HUD is not an operator acti
 The name is yours to change in `config.lua`, and `COMMAND = false` registers nothing. It is
 registered from the server half because the Open77 client runtime installs no
 `RegisterCommand`.
+
+An argument it does not recognise is answered with a warning toast carrying the usage, raised
+through `opx77_notify` by the client half; showing or hiding answers nothing, since the HUD
+going up or down is the answer. `opx77_notify` stays optional: while it is stopped, or with
+`NOTIFY = false`, the same text is a chat line instead, and the client log says so once.
 
 ## Keys
 
@@ -57,8 +63,9 @@ F11 voice mode, X stop animation, V push-to-talk, ALT context menu.
 Client exports, all of them returning a table with `ok`.
 
 - `setVisible(value)` -- show (`true`) or hide (`false`) the HUD; answers with the resulting
-  visibility.
-- `isVisible()` -- whether the HUD is up.
+  visibility, and `down`.
+- `isVisible()` -- whether the HUD is up, as chosen, and `down`: whether the player being down
+  keeps it off screen right now.
 - `vanilla()` -- what became of the game's own HUD on this client. Read-only.
 
 For a cutscene or a full-screen menu, hide it and show it again after. Nothing may set the
@@ -79,7 +86,9 @@ that loaded before this resource did, and after that only from the client-local
 `opx77:client:onPlayerLoaded`, `opx77:client:playerDataChanged` and
 `opx77:client:onPlayerUnloaded`. There is no poll behind it: the core resends the whole of
 `PlayerData` on every change to health, armour, money and job, and its client half raises
-`playerDataChanged` off that.
+`playerDataChanged` off that. A stop or restart of `opx77_core` raises no unload event, so the
+HUD treats that stop as an unload: the character and its needs leave the frame until the core
+loads a character again.
 
 `opx77_status` is read the same way: once at start with its `getNeeds` export, and after that
 only from the client-local `opx77:status:needs` event, which it raises on every change. The
@@ -93,6 +102,19 @@ refusal, or an event carrying `ready = false` -- the gauges it owns are left out
 entirely rather than drawn at zero, and every other block keeps drawing. An empty hunger bar
 is something a player acts on, so it is never shown for a value the HUD does not have.
 
+## While the player is down
+
+`opx77_medic` raises the client-local `opx77:medic:stateChanged` on every change, and this
+resource reads it once at start with its `isDown` export, for a HUD (re)started while the
+player is already down. While down the whole surface, chip strip included, is off screen. A
+`setVisible` or a `/hud` in that time is kept rather than drawn, and the player's own F8
+choice is never touched, so a revival or a give up puts back exactly what they had. Any
+resource can raise that name, so the most it does is hide the HUD or put back what the player
+chose; it never shows one they turned off. `opx77_medic` stopping brings the HUD back.
+
+The game's own HUD needs nothing here: a component `VANILLA` sets to `true` only releases this
+resource's claim, so what `opx77_medic` hides while the player is down stays hidden.
+
 ## The game's own HUD
 
 Left alone, Cyberpunk keeps drawing its own health bar, clock and minimap underneath this one,
@@ -101,8 +123,9 @@ when a character loads, because the game brings its HUD back at incarnation. Thi
 `ui.vanilla.hud` capability, which the manifest declares; it is presentation on the client and
 nothing here is authoritative.
 
-What is restored when this resource stops is whatever each component was found at, not what is
-written in the config, so a component the player's own settings had off stays off. A component
+Each `false` is a hide claim this resource holds; `true` releases only its own claim, so a
+component another resource hides stays hidden. The platform releases every claim of this resource
+when it stops or reloads, so nothing is put back by hand. A component
 name this client does not recognise is a logged warning, and a client whose `Open77.hud`
 predates the API is a logged warning too, never a script error -- `exports("vanilla")` is how
 you tell those apart.
@@ -122,10 +145,14 @@ you tell those apart.
   show it. Anything that is not a number is read as `false`.
 - `LOCALE` -- the catalogue player-facing text is read from: `en` or `fr`.
 - `COMMAND` -- the chat command, or `false` for none. See **Commands** above.
-- `KEYS.TOGGLE` -- the show/hide key's default, or `false` for none. See **Keys** above.
+- `NOTIFY` -- the command's refusal as an `opx77_notify` toast (`true`, the default), or
+  `false` for a chat line. See **Commands** above.
+- `KEYS.TOGGLE` -- the show/hide key's default, which each player can rebind in the pause menu,
+  or `false` to register no mapping. See **Keys** above.
 - `VANILLA` -- the game's own HUD, component by component: `false` hides it, `true` puts it
   back, a removed line leaves that component alone, and `VANILLA = false` leaves the whole
-  thing alone.
+  thing alone. The shipped lines are `minimap`, `compass`, `clock`, `health`, `stamina`,
+  `weapon` (the weapon and its ammunition count, together) and `speedometer`.
 
 ## Locales
 
@@ -133,6 +160,14 @@ you tell those apart.
 `config.lua`. A missing key falls back to `en` and then to the key itself. The catalogue is a
 `shared_script` because the `/hud` command is registered server-side. `Open77.log` lines stay
 English.
+
+## Architecture
+
+Why the code is written the way it is -- load order, the two sources, the player being down,
+the frame signature, the untrusted status strip, the key, the game's own HUD -- is in
+[`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) (in French). The LuaLS types and the
+signatures of the `OpxHud.*` functions are in `std/` (`std/types.lua` and one stub file per
+script); they are never loaded.
 
 ## Community & Support
 

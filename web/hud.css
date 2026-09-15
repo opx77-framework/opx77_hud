@@ -8,6 +8,13 @@
   --op77-accent-soft: rgba(252, 238, 10, 0.13);
   --op77-accent-line: rgba(252, 238, 10, 0.45);
   --op77-ink:         #0a0a05;
+
+  --hud-shadow-rgb:     3, 7, 13;
+  --hud-chip-ok-line:   rgba(79, 227, 169, 0.5);
+  --hud-chip-warn-line: rgba(245, 201, 92, 0.5);
+  --hud-chip-bad-line:  rgba(255, 92, 92, 0.5);
+  --hud-shock:          #4ea8ff;
+  --hud-shock-line:     rgba(78, 168, 255, 0.5);
 }
 
 * { box-sizing: border-box; }
@@ -80,20 +87,17 @@ body.open .gauges { transform: none; }
   min-width: 0;
 }
 
+/* Sheared plates, drawn without a border. */
 .gauge .block {
   flex: 1;
   height: 10px;
   min-width: 3px;
-  background: var(--op77-panel);
-  border: 1px solid var(--op77-line-hud);
-  transition: background var(--op77-dur-fast) var(--op77-ease),
-              border-color var(--op77-dur-fast) var(--op77-ease);
+  background: var(--op77-panel-raised);
+  clip-path: polygon(4px 0, 100% 0, calc(100% - 4px) 100%, 0 100%);
+  transition: background var(--op77-dur-fast) var(--op77-ease);
 }
 
-.gauge .block.on {
-  background: var(--op77-text-dim);
-  border-color: var(--op77-text-dim);
-}
+.gauge .block.on { background: var(--op77-text-dim); }
 
 .gauge .value {
   flex: none;
@@ -105,13 +109,13 @@ body.open .gauges { transform: none; }
   font-variant-numeric: tabular-nums;
 }
 
-.gauge.health .block.on { background: var(--op77-accent); border-color: var(--op77-accent); }
+.gauge.health .block.on { background: var(--op77-accent); }
 .gauge.health .icon { color: var(--op77-accent); }
 
 /* Which value is low is decided in Lua. */
-.gauge.warn .block.on { background: var(--op77-warn); border-color: var(--op77-warn); }
+.gauge.warn .block.on { background: var(--op77-warn); }
 .gauge.warn .icon, .gauge.warn .value { color: var(--op77-warn); }
-.gauge.bad .block.on { background: var(--op77-danger); border-color: var(--op77-danger); }
+.gauge.bad .block.on { background: var(--op77-danger); }
 .gauge.bad .icon, .gauge.bad .value { color: var(--op77-danger); }
 
 .info {
@@ -124,7 +128,7 @@ body.open .gauges { transform: none; }
   gap: 3px;
   max-width: 34vw;
   /* no plate under these lines, so the shadow is what keeps them legible */
-  text-shadow: 0 1px 3px rgba(3, 7, 13, 0.95), 0 0 10px rgba(3, 7, 13, 0.7);
+  text-shadow: 0 1px 3px rgba(var(--hud-shadow-rgb), 0.95), 0 0 10px rgba(var(--hud-shadow-rgb), 0.7);
 }
 
 .info.anchor-top-right,
@@ -156,17 +160,7 @@ body.open .gauges { transform: none; }
 
 .info .line.on .value { color: var(--op77-ok); }
 
-/* Sheared plates: matches the base rule on specificity, so keep it below. */
-.gauge .block {
-  clip-path: polygon(4px 0, 100% 0, calc(100% - 4px) 100%, 0 100%);
-  border: 0;
-  background: var(--op77-panel-raised);
-}
-.gauge .block.on { border: 0; }
-
 /* Status effects, owned by opx77_status and drawn on this surface. */
-body.open { opacity: 1; }
-
 .strip {
   position: fixed;
   display: flex;
@@ -192,12 +186,14 @@ body.open { opacity: 1; }
   gap: var(--op77-space-2);
 }
 
+/* The cut corner; the extra 10px of right padding pays for what the clip-path cuts away. */
 .chip {
   position: relative;
   display: flex;
   align-items: center;
   gap: var(--op77-space-2);
-  padding: 5px var(--op77-space-3);
+  padding: 5px calc(var(--op77-space-3) + 10px) 5px var(--op77-space-3);
+  clip-path: polygon(0 0, 100% 0, calc(100% - 10px) 100%, 0 100%);
   background: var(--op77-panel);
   border: 1px solid var(--op77-line-hud);
   font: 700 var(--op77-fs-label) / 1 var(--op77-font-mono);
@@ -230,13 +226,13 @@ body.open { opacity: 1; }
 }
 
 /* Never group these: the icon takes a colour, the .time bar a background. */
-.chip.ok { border-color: rgba(79, 227, 169, 0.5); }
+.chip.ok { border-color: var(--hud-chip-ok-line); }
 .chip.ok .icon { color: var(--op77-ok); }
 .chip.ok .time { background: var(--op77-ok); }
-.chip.warn { border-color: rgba(245, 201, 92, 0.5); }
+.chip.warn { border-color: var(--hud-chip-warn-line); }
 .chip.warn .icon { color: var(--op77-warn); }
 .chip.warn .time { background: var(--op77-warn); }
-.chip.bad { border-color: rgba(255, 92, 92, 0.5); }
+.chip.bad { border-color: var(--hud-chip-bad-line); }
 .chip.bad .icon { color: var(--op77-danger); }
 .chip.bad .time { background: var(--op77-danger); }
 .chip.accent { border-color: var(--op77-accent-line); }
@@ -244,18 +240,18 @@ body.open { opacity: 1; }
 .chip.accent .time { background: var(--op77-accent); }
 
 /* Cyberpunk 2077 damage types; `shock` is the one colour not in open77-ui.css. */
-.chip.bleed { border-color: rgba(255, 92, 92, 0.5); }
+.chip.bleed { border-color: var(--hud-chip-bad-line); }
 .chip.bleed .icon { color: var(--op77-danger); }
 .chip.bleed .time { background: var(--op77-danger); }
-.chip.burn { border-color: rgba(245, 201, 92, 0.5); }
+.chip.burn { border-color: var(--hud-chip-warn-line); }
 .chip.burn .icon { color: var(--op77-warn); }
 .chip.burn .time { background: var(--op77-warn); }
-.chip.chem { border-color: rgba(79, 227, 169, 0.5); }
+.chip.chem { border-color: var(--hud-chip-ok-line); }
 .chip.chem .icon { color: var(--op77-ok); }
 .chip.chem .time { background: var(--op77-ok); }
-.chip.shock { --op77-shock: #4ea8ff; border-color: rgba(78, 168, 255, 0.5); }
-.chip.shock .icon { color: var(--op77-shock); }
-.chip.shock .time { background: var(--op77-shock); }
+.chip.shock { border-color: var(--hud-shock-line); }
+.chip.shock .icon { color: var(--hud-shock); }
+.chip.shock .time { background: var(--hud-shock); }
 
 /* What did not fit, counted rather than dropped. */
 .chip.more {
@@ -264,10 +260,296 @@ body.open { opacity: 1; }
   color: var(--op77-text-faint);
 }
 
-/* The cut corner: matches the base .chip on specificity, so keep it below. */
-.chip {
-  clip-path: polygon(0 0, 100% 0, calc(100% - 10px) 100%, 0 100%);
-  /* the extra 10px pays for the corner the clip-path cuts away */
-  padding-right: calc(var(--op77-space-3) + 10px);
-  border-radius: 0;
+/* Every widget below toggles parts with the hidden attribute, which a display rule would beat. */
+.voice [hidden],
+.vehicle [hidden] { display: none !important; }
+
+/* Voice: right edge, vertically centred. The state is decided in Lua; colour follows it. */
+.voice {
+  position: fixed;
+  right: var(--op77-inset-x);
+  top: 50%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  width: 52px;
+  --voice-tone: var(--op77-text-dim);
+  opacity: 0;
+  transform: translate(8px, -50%);
+  transition: opacity var(--op77-dur) var(--op77-ease), transform var(--op77-dur) var(--op77-ease);
+  text-shadow: 0 1px 3px rgba(var(--hud-shadow-rgb), 0.95);
+}
+
+.voice.live { opacity: 1; transform: translate(0, -50%); }
+
+.voice.state-idle     { --voice-tone: var(--op77-text-dim); }
+.voice.state-detected { --voice-tone: var(--op77-text); }
+.voice.state-talking  { --voice-tone: var(--op77-accent); }
+.voice.state-muted    { --voice-tone: var(--op77-danger); }
+.voice.state-offline  { --voice-tone: var(--op77-text-faint); }
+
+/* The mic sits on a cut plate whose right rule takes the state colour. */
+.voice-mic {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  background: var(--op77-panel-quiet);
+  border: 1px solid var(--op77-line-hud);
+  border-right: var(--op77-rule) solid var(--voice-tone);
+  clip-path: polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 10px 100%, 0 calc(100% - 10px));
+  color: var(--voice-tone);
+  transition: color var(--op77-dur-fast) var(--op77-ease), border-color var(--op77-dur-fast) var(--op77-ease),
+    background var(--op77-dur-fast) var(--op77-ease);
+}
+
+.voice-mic svg { display: block; width: 20px; height: 20px; }
+
+.voice.state-talking .voice-mic {
+  background: var(--op77-accent-soft);
+  border-color: var(--op77-accent-line);
+  border-right-color: var(--op77-accent);
+}
+.voice.state-talking .voice-mic svg { filter: drop-shadow(0 0 5px var(--op77-accent-line)); }
+
+.voice-slash {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 26px;
+  height: 2px;
+  background: var(--voice-tone);
+  transform: translate(-50%, -50%) rotate(-45deg) scaleX(0);
+  transition: transform var(--op77-dur-fast) var(--op77-ease);
+}
+
+.voice.state-muted .voice-slash,
+.voice.state-offline .voice-slash { transform: translate(-50%, -50%) rotate(-45deg) scaleX(1); }
+
+.voice-caption {
+  font: 700 var(--op77-fs-micro) / 1 var(--op77-font-mono);
+  letter-spacing: var(--op77-track-micro);
+  text-transform: uppercase;
+  color: var(--voice-tone);
+  white-space: nowrap;
+}
+
+/* Input level: sheared slats stacked upwards, lit from the bottom. */
+.voice-meter {
+  display: flex;
+  flex-direction: column-reverse;
+  gap: 2px;
+  width: 22px;
+}
+
+.voice-meter .block {
+  height: 4px;
+  background: var(--op77-panel-raised);
+  clip-path: polygon(3px 0, 100% 0, calc(100% - 3px) 100%, 0 100%);
+  transition: background var(--op77-dur-fast) var(--op77-ease);
+}
+
+.voice-meter .block.on { background: var(--voice-tone); }
+.voice.state-detected .voice-meter .block.on { background: var(--op77-text-dim); }
+
+.voice-mode {
+  margin-top: 2px;
+  font: 700 var(--op77-fs-label) / 1 var(--op77-font-mono);
+  letter-spacing: var(--op77-track-label);
+  text-transform: uppercase;
+  color: var(--op77-accent);
+  white-space: nowrap;
+}
+
+.voice-distance {
+  font: 700 var(--op77-fs-meta) / 1 var(--op77-font-mono);
+  letter-spacing: var(--op77-track-label);
+  color: var(--op77-text);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* Which reach mode of the cycle is active. */
+.voice-pips {
+  display: flex;
+  gap: 3px;
+}
+
+.voice-pips .block {
+  width: 8px;
+  height: 3px;
+  background: var(--op77-panel-raised);
+  clip-path: polygon(2px 0, 100% 0, calc(100% - 2px) 100%, 0 100%);
+}
+
+.voice-pips .block.on { background: var(--op77-accent); }
+
+.voice-keys {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+}
+
+.voice-key {
+  min-width: 22px;
+  padding: 3px 5px 2px;
+  border: 1px solid var(--op77-line-hud);
+  border-radius: var(--op77-radius-sm);
+  background: var(--op77-panel-quiet);
+  font: 700 var(--op77-fs-micro) / 1 var(--op77-font-mono);
+  letter-spacing: var(--op77-track-label);
+  text-align: center;
+  color: var(--op77-text-dim);
+  white-space: nowrap;
+}
+
+.voice-key.ptt { border-style: dashed; }
+
+/* Players heard right now: only while someone is audible. */
+.voice-heard {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font: 700 var(--op77-fs-label) / 1 var(--op77-font-mono);
+  color: var(--op77-ok);
+}
+
+.voice-heard i {
+  width: 5px;
+  height: 5px;
+  background: var(--op77-ok);
+  animation: voice-rx 1.1s ease-in-out infinite;
+}
+
+@keyframes voice-rx {
+  0%, 100% { opacity: 0.5; }
+  50% { opacity: 1; }
+}
+
+/* Vehicle: a cut plate in the configured corner, only while seated in a vehicle. */
+.vehicle {
+  position: fixed;
+  display: flex;
+  flex-direction: column;
+  gap: var(--op77-space-1);
+  min-width: 190px;
+  padding: var(--op77-space-2) calc(var(--op77-space-3) + 6px) var(--op77-space-2) var(--op77-space-3);
+  background: var(--op77-panel-quiet);
+  border: 1px solid var(--op77-line-hud);
+  border-left: var(--op77-rule) solid var(--op77-accent);
+  clip-path: var(--op77-notch-clip);
+  opacity: 0;
+  transform: translateY(var(--slide, 8px));
+  transition: opacity var(--op77-dur) var(--op77-ease), transform var(--op77-dur) var(--op77-ease);
+}
+
+.vehicle.live { opacity: 1; transform: none; }
+
+.vehicle.anchor-bottom-left,
+.vehicle.anchor-top-left { left: var(--op77-inset-x); }
+.vehicle.anchor-bottom-right,
+.vehicle.anchor-top-right { right: var(--op77-inset-x); }
+.vehicle.anchor-bottom-left,
+.vehicle.anchor-bottom-right { bottom: var(--op77-inset-y); --slide: 8px; }
+.vehicle.anchor-top-left,
+.vehicle.anchor-top-right { top: var(--op77-inset-y); --slide: -8px; }
+
+.vehicle-top {
+  display: flex;
+  align-items: baseline;
+  gap: var(--op77-space-2);
+}
+
+.vehicle-speed {
+  min-width: 3ch;
+  font: 700 var(--op77-fs-hero) / 1 var(--op77-font-display);
+  letter-spacing: var(--op77-track-head);
+  color: var(--op77-text);
+  font-variant-numeric: tabular-nums;
+}
+
+.vehicle-unit {
+  flex: 1;
+  font: 700 var(--op77-fs-label) / 1 var(--op77-font-mono);
+  letter-spacing: var(--op77-track-label);
+  color: var(--op77-text-dim);
+}
+
+.vehicle-gear {
+  align-self: center;
+  min-width: 26px;
+  padding: 5px 6px 4px;
+  background: var(--op77-accent);
+  clip-path: polygon(0 0, calc(100% - 6px) 0, 100% 6px, 100% 100%, 0 100%);
+  font: 700 var(--op77-fs-lead) / 1 var(--op77-font-mono);
+  text-align: center;
+  color: var(--op77-ink);
+}
+
+.vehicle-gear.neutral { background: var(--op77-panel-raised); color: var(--op77-text-dim); }
+.vehicle-gear.reverse { background: var(--op77-warn); }
+
+.vehicle-rpm {
+  display: flex;
+  align-items: center;
+  gap: var(--op77-space-2);
+}
+
+.vehicle-rpm .blocks {
+  flex: 1;
+  display: flex;
+  gap: 2px;
+}
+
+.vehicle-rpm .block {
+  flex: 1;
+  height: 6px;
+  min-width: 3px;
+  background: var(--op77-panel-raised);
+  clip-path: polygon(3px 0, 100% 0, calc(100% - 3px) 100%, 0 100%);
+  transition: background var(--op77-dur-fast) var(--op77-ease);
+}
+
+.vehicle-rpm .block.on { background: var(--op77-text-dim); }
+.vehicle-rpm .block.on:nth-last-child(-n+2) { background: var(--op77-danger); }
+
+.vehicle-label {
+  font: 400 var(--op77-fs-micro) / 1 var(--op77-font-mono);
+  letter-spacing: var(--op77-track-micro);
+  text-transform: uppercase;
+  color: var(--op77-text-faint);
+  white-space: nowrap;
+}
+
+.vehicle-meta {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--op77-space-2);
+}
+
+.vehicle-integrity {
+  display: flex;
+  align-items: baseline;
+  gap: var(--op77-space-1);
+}
+
+.vehicle-integrity b {
+  font: 700 var(--op77-fs-meta) / 1 var(--op77-font-mono);
+  color: var(--op77-text);
+  font-variant-numeric: tabular-nums;
+}
+
+.vehicle-integrity.warn b { color: var(--op77-warn); }
+.vehicle-integrity.bad b { color: var(--op77-danger); }
+
+.vehicle-air {
+  font: 700 var(--op77-fs-micro) / 1 var(--op77-font-mono);
+  letter-spacing: var(--op77-track-micro);
+  text-transform: uppercase;
+  color: var(--op77-accent);
 }

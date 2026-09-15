@@ -1,33 +1,42 @@
---- The public export surface: control of the rectangle, not of the character drawn in it.
---- Every call answers a table carrying `ok` and never raises; the shapes are in types.lua.
+--- @author DemiAutomatic
+--- @file client/exports.lua
+--- @description The three client exports, each answering a table carrying ok.
 
-local Runtime = OpxHud.runtime
-local Vanilla = OpxHud.vanilla
+local State = OpxHud.State
+local Runtime = OpxHud.Runtime
+local Vanilla = OpxHud.Vanilla
 
----@param ok boolean
----@param values table|nil
----@return table
-local function response(ok, values)
-  values = values or {}
-  values.ok = ok == true
-  return values
+--- @author DemiAutomatic
+--- @method answer
+--- @description Marks an answer table ok and returns it.
+--- @param values {table}
+--- @returns {HudResponse}
+local function answer(values)
+	values.ok = true
+	return values
 end
 
---- Shows or hides the HUD.
----@param value boolean
----@return HudVisibility
-exports("setVisible", function(value)
-  return response(true, { visible = Runtime.setVisible(value) })
+--- @author DemiAutomatic
+--- @export setVisible
+--- @description Shows or hides the HUD, answering the choice and down.
+--- @param value {boolean}
+--- @returns {HudVisibility}
+exports('setVisible', function(value)
+	return answer({ visible = Runtime.SetVisible(value), down = State.down })
 end)
 
---- Whether the HUD is up.
----@return HudVisibility
-exports("isVisible", function()
-  return response(true, { visible = Runtime.isVisible() })
+--- @author DemiAutomatic
+--- @export isVisible
+--- @description Answers whether the HUD is chosen shown, and whether down.
+--- @returns {HudVisibility}
+exports('isVisible', function()
+	return answer({ visible = State.visible, down = State.down })
 end)
 
---- What became of the game's own HUD on this client. Read-only.
----@return HudVanilla
-exports("vanilla", function()
-  return response(true, Vanilla.snapshot())
+--- @author DemiAutomatic
+--- @export vanilla
+--- @description Reports what became of the game's own HUD, read-only.
+--- @returns {HudVanilla}
+exports('vanilla', function()
+	return answer(Vanilla.Snapshot())
 end)

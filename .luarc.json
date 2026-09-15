@@ -7,6 +7,9 @@
     "?/init.lua"
   ],
   "workspace.checkThirdParty": false,
+  "workspace.library": [
+    "std"
+  ],
   "diagnostics.globals": [
     "OpxHud",
     "OPX_HUD_CONFIG",
@@ -23,6 +26,7 @@
     "RegisterCommand",
     "RegisterKeyMapping",
     "GetCurrentResourceName",
+    "GetGameTimer",
     "GetResourceState",
     "GetInvokingResource",
     "GetInvokingResourceGeneration",
@@ -30,7 +34,12 @@
     "print"
   ],
   "diagnostics.disable": [
-    "lowercase-global"
+    "lowercase-global",
+    "luadoc-miss-symbol",
+    "unknown-doc-tag",
+    "undefined-doc-name",
+    "undefined-doc-param-name",
+    "doc-field-no-class"
   ],
   "diagnostics.severity": {
     "undefined-global": "Error",
@@ -39,12 +48,11 @@
   },
   "format.enable": true,
   "format.defaultConfig": {
-    "indent_style": "space",
-    "indent_size": "2",
-    "max_line_length": "100",
-    "quote_style": "double"
+    "indent_style": "tab",
+    "quote_style": "single"
   },
   "workspace.ignoreDir": [
-    ".claude"
+    ".claude",
+    "std"
   ]
 }

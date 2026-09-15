@@ -1,335 +1,610 @@
---- The WebUI surface, and the links to opx77_core and opx77_status.
-
-OpxHud = OpxHud or {}
+--- @author DemiAutomatic
+--- @file client/main.lua
+--- @description The WebUI surface, its frames, the live vitals, voice and vehicle sampling, and the opx77_core, opx77_status and opx77_medic links.
 
 local Config = OPX_HUD_CONFIG
 
---- Segments per gauge.
+--- @author DemiAutomatic
+--- @type {integer}
+--- @description Number of segments a gauge is cut into.
 local GAUGE_SEGMENTS = 10
 
---- The surface the page is drawn on; a published strip offset is bounded by its height.
+--- @author DemiAutomatic
+--- @type {integer}
+--- @description Width of the surface the page is composited on.
 local SURFACE_WIDTH = 1920
+
+--- @author DemiAutomatic
+--- @type {integer}
+--- @description Height of the surface, which bounds a published strip offset.
 local SURFACE_HEIGHT = 1080
 
-local State = OpxHud.state
-local finite = State.finite
-local Keys = OpxHud.keys
+local State = OpxHud.State
+local finite = State.Finite
+local Keys = OpxHud.Keys
+local Vitals = OpxHud.Vitals
+local Vehicle = OpxHud.Vehicle
+local Voice = OpxHud.Voice
 
---- The mapping that shows and hides the HUD. The id is stable: a player's rebind is stored
---- under it.
-local KEY_TOGGLE = "opx77_hud.toggle"
+--- @author DemiAutomatic
+--- @type {integer}
+--- @description Milliseconds between two samples of the live vitals, voice and vehicle.
+local TICK_MS = 50
 
-local Runtime = {}
-OpxHud.runtime = Runtime
+--- @author DemiAutomatic
+--- @type {integer}
+--- @description Number of segments the vehicle RPM bar is cut into.
+local RPM_SEGMENTS = 10
 
+--- @author DemiAutomatic
+--- @type {string}
+--- @description Stable id of the show and hide mapping.
+local KEY_TOGGLE = 'opx77_hud.toggle'
+
+OpxHud.Runtime = {}
+local Runtime = OpxHud.Runtime
+
+--- @author DemiAutomatic
+--- @type {string}
+--- @description This resource's own name, for its lifecycle events.
 local RESOURCE = GetCurrentResourceName()
-local CORE = "opx77_core"
-local STATUS = "opx77_status"
 
---- What opx77_status publishes; a satellite cannot read another resource's config.
-local NEEDS_EVENT = "opx77:status:needs"
-local EFFECTS_EVENT = "opx77:status:effects"
+--- @author DemiAutomatic
+--- @type {string}
+--- @description Resource holding the character snapshot.
+local CORE = 'opx77_core'
 
+--- @author DemiAutomatic
+--- @type {string}
+--- @description Resource holding the needs and the status chips.
+local STATUS = 'opx77_status'
+
+--- @author DemiAutomatic
+--- @type {string}
+--- @description Resource raising toasts for the command's answers.
+local NOTIFY = 'opx77_notify'
+
+--- @author DemiAutomatic
+--- @type {string}
+--- @description Resource deciding whether the player is down.
+local MEDIC = 'opx77_medic'
+
+--- @author DemiAutomatic
+--- @type {string}
+--- @description Local event opx77_status raises with the needs.
+local NEEDS_EVENT = 'opx77:status:needs'
+
+--- @author DemiAutomatic
+--- @type {string}
+--- @description Local event opx77_status raises with the status chips.
+local EFFECTS_EVENT = 'opx77:status:effects'
+
+--- @author DemiAutomatic
+--- @type {string}
+--- @description Local event opx77_medic raises on every down state change.
+local MEDIC_EVENT = 'opx77:medic:stateChanged'
+
+--- @author DemiAutomatic
+--- @type {string}
+--- @description Local event the client raises when the local player's health, stamina or armour moved.
+local STATS_EVENT = 'open77:playerStatsChanged'
+
+--- @author DemiAutomatic
+--- @type {table|nil}
+--- @description The WebUI surface, nil until created or after this stop.
 local page
+
+--- @author DemiAutomatic
+--- @type {boolean}
+--- @description Whether the page has raised hud:ready.
 local pageReady = false
 
---- The last signature sent to the page, so a change that moves nothing sends nothing.
+--- @author DemiAutomatic
+--- @type {string|nil}
+--- @description Signature of the last frame the page accepted.
 local drawn = nil
 
---- Post one message to the page. Every caller is an event handler or the boot thread, so a
---- raise from the host is logged rather than ending it.
----@param name string
----@param payload table
----@return boolean sent
+--- @author DemiAutomatic
+--- @type {table<string, string>}
+--- @description Signature of the last voice and vehicle message the page accepted, by widget name.
+local drawnWidgets = {}
+
+--- @author DemiAutomatic
+--- @method send
+--- @description Posts one message to the page, logging a host raise.
+--- @param name {string}
+--- @param payload {table}
+--- @returns {boolean}
 local function send(name, payload)
-  local ok, reason = pcall(page.send, page, name, payload)
-  if not ok then Open77.log.error("page " .. name .. ": " .. tostring(reason)) end
-  return ok
+	local ok, reason = pcall(page.send, page, name, payload)
+	if not ok then Open77.log.error('page ' .. name .. ': ' .. tostring(reason)) end
+	return ok
 end
 
-local function sendConfig()
-  if page == nil or not pageReady then return end
-  send("hud:config", {
-    anchor = Config.ANCHOR,
-    infoAnchor = Config.INFO_ANCHOR,
-    width = Config.WIDTH,
-    segments = GAUGE_SEGMENTS,
-  })
-end
-
---- The most chips a publisher may put on screen at once, and the largest "+N" past them
---- that still reads as a number.
+--- @author DemiAutomatic
+--- @type {integer}
+--- @description Most chips kept from one effects payload.
 local MAX_CHIPS = 12
+
+--- @author DemiAutomatic
+--- @type {integer}
+--- @description Largest overflow count that still reads as a number.
 local MAX_HIDDEN = 999
 
-local effects = { chips = {}, hidden = 0, signature = "" }
+--- @author DemiAutomatic
+--- @type {table}
+--- @description Bounded status chips carried into the next frame, with their signature.
+local effects = { chips = {}, hidden = 0, signature = '' }
 
---- Push a frame, or hide.
----@param force boolean|nil skip the signature test, for a page whose DOM is new
+--- @author DemiAutomatic
+--- @method draw
+--- @description Sends a frame or hides the surface when the picture changed.
+--- @param force {boolean|nil} Skip the signature test.
 local function draw(force)
-  if page == nil or not pageReady then return end
-  local view = State.view()
-  -- the effects join the signature: a chip appearing is a repaint even when no gauge moved
-  local signature = State.signature(view) .. "\2" .. effects.signature
-  if not force and signature == drawn then return end
-  local sent
-  -- the whole surface is one element's `open` class, chip strip included, so hiding is
-  -- decided on State.visible rather than on the view
-  if not State.visible or (view == nil and #effects.chips == 0) then
-    sent = send("hud:hide", {})
-  else
-    view = view or { rows = {} }
-    view.chips = effects.chips
-    view.hidden = effects.hidden
-    view.stripAnchor = effects.anchor
-    view.stripOffset = effects.offset
-    sent = send("hud:frame", view)
-  end
-  -- a message that did not land leaves the page drawing an older frame
-  drawn = sent and signature or nil
+	if page == nil or not pageReady then return end
+	local view = State.View()
+	local signature = State.Signature(view) .. '\2' .. effects.signature
+	if not force and signature == drawn then return end
+	local sent
+	if not State.visible or State.down or (view == nil and #effects.chips == 0) then
+		sent = send('hud:hide', {})
+	else
+		view = view or { rows = {} }
+		view.chips = effects.chips
+		view.hidden = effects.hidden
+		view.stripAnchor = effects.anchor
+		view.stripOffset = effects.offset
+		sent = send('hud:frame', view)
+	end
+	drawn = sent and signature or nil
 end
 
---- One export call. Coroutine only: `await` has no synchronous form.
----@param resource string
----@param name string
----@return table|nil result
----@return string|nil reason
----@return boolean answered true when the resource ran the export, so a refusal is authoritative
+--- @author DemiAutomatic
+--- @method drawWidget
+--- @description Sends one voice or vehicle message when its picture changed; nil turns the widget off.
+--- @param name {string} voice or vehicle, which names the message hud:<name>.
+--- @param view {table|nil}
+--- @param signature {string}
+--- @param force {boolean|nil} Skip the signature test.
+local function drawWidget(name, view, signature, force)
+	if not force and drawnWidgets[name] == signature then return end
+	local payload = view or {}
+	payload.active = view ~= nil
+	local sent = send('hud:' .. name, payload)
+	drawnWidgets[name] = sent and signature or nil
+end
+
+--- @author DemiAutomatic
+--- @method drawLive
+--- @description Samples and sends the voice indicator and the vehicle read-out while a character is shown.
+--- @param force {boolean|nil} Skip the signature tests.
+local function drawLive(force)
+	if page == nil or not pageReady then return end
+	local shown = State.visible and not State.down and State.data ~= nil
+
+	local voice = shown and Voice.Sample() or nil
+	drawWidget('voice', voice, Voice.Signature(voice), force)
+
+	local vehicle = shown and Vehicle.Sample() or nil
+	local signature = Vehicle.Signature(vehicle)
+	if vehicle ~= nil then
+		vehicle.unit = locale('hud.vehicle.unit')
+		vehicle.rpmLabel = locale('hud.vehicle.rpm')
+		vehicle.integrityLabel = locale('hud.vehicle.integrity')
+		vehicle.airborneLabel = locale('hud.vehicle.airborne')
+	end
+	drawWidget('vehicle', vehicle, signature, force)
+end
+
+--- @author DemiAutomatic
+--- @type {boolean}
+--- @description Whether an unreadable live vitals API has already been logged.
+local vitalsReported = false
+
+--- @author DemiAutomatic
+--- @method sampleVitals
+--- @description Reads live health and armour, keeping the last reading through an empty answer.
+local function sampleVitals()
+	local values, reason = Vitals.Sample()
+	if values ~= nil then
+		State.SetVitals(values)
+		return
+	end
+	if reason == nil then return end
+	State.SetVitals(nil)
+	if vitalsReported then return end
+	vitalsReported = true
+	Open77.log.warn(('live vitals unreadable (%s): health falls back to the saved character'):format(reason))
+end
+
+--- @author DemiAutomatic
+--- @method call
+--- @description Calls another resource's export from a coroutine, at three levels.
+--- @param resource {string}
+--- @param name {string}
+--- @returns {table|nil, string|nil, boolean}
 local function call(resource, name, ...)
-  if GetResourceState(resource) ~= "running" then return nil, "not_running", false end
-  local promise, reason = Open77.exports.call(resource, name, ...)
-  if not promise then return nil, tostring(reason or "not_dispatched"), false end
-  local result, callError = promise:await()
-  if callError then return nil, tostring(callError), false end
-  if type(result) ~= "table" then return nil, "malformed_answer", true end
-  if result.ok == false then return nil, tostring(result.error or "refused"), true end
-  return result, nil, true
+	if GetResourceState(resource) ~= 'running' then return nil, 'not_running', false end
+	local promise, reason = Open77.exports.call(resource, name, ...)
+	if not promise then return nil, tostring(reason or 'not_dispatched'), false end
+	local result, callError = promise:await()
+	if callError then return nil, tostring(callError), false end
+	if type(result) ~= 'table' then return nil, 'malformed_answer', true end
+	if result.ok ~= true then return nil, tostring(result.error or 'refused'), true end
+	return result, nil, true
 end
 
---- Catch up on the character opx77_core holds. Every later change arrives on one of the
---- core's local events below, so this runs once rather than on a timer. Coroutine only.
----@return boolean ok
+--- @author DemiAutomatic
+--- @type {boolean}
+--- @description Whether a toast failure has already been logged.
+local notifyReported = false
+
+--- @author DemiAutomatic
+--- @method chatLine
+--- @description Writes an answer as a chat line when no toast is possible.
+--- @param kind {string} info, success, warning or error.
+--- @param message {string}
+local function chatLine(kind, message)
+	TriggerEvent('chat:addMessage', {
+		type = (kind == 'info' or kind == 'success') and 'info' or 'error',
+		author = locale('hud.title'),
+		text = message,
+	})
+end
+
+--- @author DemiAutomatic
+--- @method notify
+--- @description Tells the player something by toast, or by chat line otherwise.
+--- @param kind {string} info, success, warning or error.
+--- @param message {string}
+local function notify(kind, message)
+	if Config.NOTIFY == false then return chatLine(kind, message) end
+	CreateThread(function()
+		local _, failure = call(NOTIFY, 'show', {
+			id = 'opx77_hud.answer',
+			replace = true,
+			type = kind,
+			title = locale('hud.title'),
+			message = message,
+			durationMs = 5000,
+		})
+		if failure == nil then return end
+		if not notifyReported then
+			notifyReported = true
+			Open77.log.warn(('no toast (%s): answers go to the chat box instead'):format(failure))
+		end
+		chatLine(kind, message)
+	end)
+end
+
+--- @author DemiAutomatic
+--- @method pull
+--- @description Reads the character snapshot from opx77_core once, from a coroutine.
 local function pull()
-  local result, _, answered = call(CORE, "GetPlayerData")
-  if result == nil then
-    -- only a refusal clears the HUD: a call that never landed says nothing about the character
-    if answered then State.data = nil end
-    return false
-  end
-  State.data = result.data
-  return true
+	local result, _, answered = call(CORE, 'GetPlayerData')
+	if result == nil then
+		if answered then State.data = nil end
+		return
+	end
+	State.data = result.data
 end
 
---- Catch up on the needs opx77_status holds. Every later change arrives on NEEDS_EVENT,
---- so this runs once rather than on a timer. Coroutine only.
----@return boolean ok
+--- @author DemiAutomatic
+--- @method pullNeeds
+--- @description Reads the needs from opx77_status once, from a coroutine.
 local function pullNeeds()
-  local result, _, answered = call(STATUS, "getNeeds")
-  if result == nil then
-    -- a refusal is authoritative: no character, or the status server has not answered yet
-    if answered then State.setNeeds(nil, false) end
-    return false
-  end
-  State.setNeeds(result.values, result.ready == true)
-  return true
+	local result, _, answered = call(STATUS, 'getNeeds')
+	if result == nil then
+		if answered then State.SetNeeds(nil, false) end
+		return
+	end
+	State.SetNeeds(result.values, result.ready == true)
 end
 
-AddEventHandler("opx77:client:onPlayerLoaded", function(playerData)
-  if type(playerData) ~= "table" then return end
-  State.data = playerData
-  draw()
+--- @author DemiAutomatic
+--- @type {boolean}
+--- @description Whether a medic state event landed since this resource started.
+local medicHeard = false
+
+--- @author DemiAutomatic
+--- @method setDown
+--- @description Takes the surface off screen while down, and back after.
+--- @param value {boolean}
+local function setDown(value)
+	local down = value == true
+	if State.down == down then return end
+	State.down = down
+	draw(true)
+end
+
+--- @author DemiAutomatic
+--- @method pullDown
+--- @description Reads the down state from opx77_medic once, from a coroutine.
+local function pullDown()
+	local result = call(MEDIC, 'isDown')
+	if result == nil or medicHeard then return end
+	setDown(result.down == true)
+end
+
+--- @author DemiAutomatic
+--- @event opx77:client:onPlayerLoaded
+--- @description Adopts the loaded character's snapshot, reads its live vitals and redraws.
+--- @param playerData {PlayerData}
+AddEventHandler('opx77:client:onPlayerLoaded', function(playerData)
+	if type(playerData) ~= 'table' then return end
+	State.data = playerData
+	sampleVitals()
+	draw()
 end)
 
-AddEventHandler("opx77:client:playerDataChanged", function(playerData)
-  if type(playerData) ~= "table" then return end
-  State.data = playerData
-  draw()
+--- @author DemiAutomatic
+--- @event opx77:client:playerDataChanged
+--- @description Adopts the replacement character snapshot and redraws.
+--- @param playerData {PlayerData}
+AddEventHandler('opx77:client:playerDataChanged', function(playerData)
+	if type(playerData) ~= 'table' then return end
+	State.data = playerData
+	draw()
 end)
 
---- The needs opx77_status owns. It pushes; nothing here polls them.
+--- @author DemiAutomatic
+--- @event opx77:status:needs
+--- @description Adopts the needs opx77_status pushed and redraws.
+--- @param payload {NeedsSnapshot}
 AddEventHandler(NEEDS_EVENT, function(payload)
-  if type(payload) ~= "table" then return end
-  State.setNeeds(payload.values, payload.ready == true)
-  draw()
+	if type(payload) ~= 'table' then return end
+	State.SetNeeds(payload.values, payload.ready == true)
+	draw()
 end)
 
---- The count of effects past the strip's cut, as the page can draw it. NaN, infinity and a
---- negative all read as none.
----@param value any
----@return integer
+--- @author DemiAutomatic
+--- @method hiddenCount
+--- @description Bounds the overflow count to 0..MAX_HIDDEN, floored.
+--- @param value {any}
+--- @returns {integer}
 local function hiddenCount(value)
-  local number = tonumber(value)
-  if not finite(number) or number <= 0 then return 0 end
-  if number > MAX_HIDDEN then return MAX_HIDDEN end
-  return math.floor(number)
+	local number = tonumber(value)
+	if not finite(number) or number <= 0 then return 0 end
+	if number > MAX_HIDDEN then return MAX_HIDDEN end
+	return math.floor(number)
 end
 
---- The corner the strip is placed in, or nil to leave it in the HUD's own.
----@param value any
----@return string|nil
+--- @author DemiAutomatic
+--- @method anchorOf
+--- @description Answers a short string strip corner, or nil.
+--- @param value {any}
+--- @returns {string|nil}
 local function anchorOf(value)
-  if type(value) ~= "string" or #value > 32 then return nil end
-  return value
+	if type(value) ~= 'string' or #value > 32 then return nil end
+	return value
 end
 
---- Pixels the strip sits above the corner, or nil for the page's own placement.
----@param value any
----@return number|nil
+--- @author DemiAutomatic
+--- @method offsetOf
+--- @description Answers a strip offset within the surface height, or nil.
+--- @param value {any}
+--- @returns {number|nil}
 local function offsetOf(value)
-  local number = tonumber(value)
-  if not finite(number) or number < 0 or number > SURFACE_HEIGHT then return nil end
-  return number
+	local number = tonumber(value)
+	if not finite(number) or number < 0 or number > SURFACE_HEIGHT then return nil end
+	return number
 end
 
---- Status chips from opx77_status, carried into the next frame rather than sent on their own.
+--- @author DemiAutomatic
+--- @event opx77:status:effects
+--- @description Bounds the published status chips and carries them into a frame.
+--- @param payload {StatusEffectsEvent}
 AddEventHandler(EFFECTS_EVENT, function(payload)
-  if type(payload) ~= "table" then return end
-  -- bounded: any resource can raise this name, and the page keeps one element per chip id
-  local chips = {}
-  local kept = 0
-  local offered = payload.chips
-  if type(offered) == "table" then
-    local count = #offered
-    if count > MAX_CHIPS then count = MAX_CHIPS end
-    for index = 1, count do
-      local chip = offered[index]
-      if type(chip) == "table" and chip.id ~= nil then
-        kept = kept + 1
-        chips[kept] = chip
-      end
-    end
-  end
+	if type(payload) ~= 'table' then return end
+	local chips = {}
+	local kept = 0
+	local offered = payload.chips
+	if type(offered) == 'table' then
+		local count = #offered
+		if count > MAX_CHIPS then count = MAX_CHIPS end
+		for index = 1, count do
+			local chip = offered[index]
+			if type(chip) == 'table' and chip.id ~= nil then
+				kept = kept + 1
+				chips[kept] = chip
+			end
+		end
+	end
 
-  local hidden = hiddenCount(payload.hidden)
-  local anchor = anchorOf(payload.anchor)
-  local offset = offsetOf(payload.offset)
+	local hidden = hiddenCount(payload.hidden)
+	local anchor = anchorOf(payload.anchor)
+	local offset = offsetOf(payload.offset)
 
-  -- one flat list joined once: three fields per chip, then the three the strip carries
-  local marks = {}
-  local field = 0
-  for index = 1, kept do
-    local chip = chips[index]
-    marks[field + 1] = tostring(chip.id)
-    marks[field + 2] = tostring(chip.label)
-    marks[field + 3] = tostring(chip.tone or "")
-    field = field + 3
-  end
-  marks[field + 1] = tostring(hidden)
-  marks[field + 2] = tostring(anchor or "")
-  marks[field + 3] = tostring(offset or "")
+	local marks = {}
+	local field = 0
+	for index = 1, kept do
+		local chip = chips[index]
+		marks[field + 1] = tostring(chip.id)
+		marks[field + 2] = tostring(chip.label)
+		marks[field + 3] = tostring(chip.tone or '')
+		field = field + 3
+	end
+	marks[field + 1] = tostring(hidden)
+	marks[field + 2] = tostring(anchor or '')
+	marks[field + 3] = tostring(offset or '')
 
-  -- signed on the values the frame carries, never on the raw payload
-  effects = {
-    chips = chips,
-    hidden = hidden,
-    anchor = anchor,
-    offset = offset,
-    signature = table.concat(marks, "\1"),
-  }
-  draw()
+	effects = {
+		chips = chips,
+		hidden = hidden,
+		anchor = anchor,
+		offset = offset,
+		signature = table.concat(marks, '\1'),
+	}
+	draw()
 end)
 
-AddEventHandler("opx77:client:onPlayerUnloaded", function()
-  State.data = nil
-  State.setNeeds(nil, false)
-  draw()
+--- @author DemiAutomatic
+--- @event opx77:medic:stateChanged
+--- @description Hides or restores the surface, never touching the player's choice.
+--- @param payload {MedicStateChanged}
+AddEventHandler(MEDIC_EVENT, function(payload)
+	if type(payload) ~= 'table' then return end
+	medicHeard = true
+	setDown(payload.down == true)
 end)
 
---- The answer to `/hud`, from this resource's own server half.
----@param mode string "show" | "hide" | "toggle"
-RegisterNetEvent("opx77_hud:visibility", function(mode)
-  if mode == "show" then
-    Runtime.setVisible(true)
-  elseif mode == "hide" then
-    Runtime.setVisible(false)
-  elseif mode == "toggle" then
-    Runtime.setVisible(not State.visible)
-  end
-end)
-
---- Shows or hides the HUD.
----@param value boolean
----@return boolean visible
-function Runtime.setVisible(value)
-  local wanted = value ~= false
-  if State.visible == wanted then return State.visible end
-  State.visible = wanted
-  -- forced: visibility is not part of the signature, so an otherwise identical frame is skipped
-  draw(true)
-  return State.visible
+--- @author DemiAutomatic
+--- @method unload
+--- @description Drops the character, its live vitals and its needs, and redraws.
+local function unload()
+	State.data = nil
+	State.SetVitals(nil)
+	State.SetNeeds(nil, false)
+	draw()
+	drawLive()
 end
 
---- Whether the HUD is up.
----@return boolean visible
-function Runtime.isVisible()
-  return State.visible
+--- @author DemiAutomatic
+--- @event opx77:client:onPlayerUnloaded
+--- @description Drops the character, its live vitals and its needs, and redraws.
+AddEventHandler('opx77:client:onPlayerUnloaded', unload)
+
+--- @author DemiAutomatic
+--- @event open77:playerStatsChanged
+--- @description Reads the live health and armour at once and redraws, ahead of the next tick.
+AddEventHandler(STATS_EVENT, function()
+	if State.data == nil then return end
+	sampleVitals()
+	draw()
+end)
+
+--- @author DemiAutomatic
+--- @event opx77_hud:visibility
+--- @description Applies the mode the server half resolved for the command.
+--- @param mode {string} show, hide or toggle.
+RegisterNetEvent('opx77_hud:visibility', function(mode)
+	if mode == 'show' then
+		Runtime.SetVisible(true)
+	elseif mode == 'hide' then
+		Runtime.SetVisible(false)
+	elseif mode == 'toggle' then
+		Runtime.SetVisible(not State.visible)
+	end
+end)
+
+--- @author DemiAutomatic
+--- @event opx77_hud:notice
+--- @description Shows the command's refusal the server half already translated.
+--- @param kind {string}
+--- @param message {string}
+RegisterNetEvent('opx77_hud:notice', function(kind, message)
+	if type(message) ~= 'string' or message == '' then return end
+	if kind ~= 'info' and kind ~= 'success' and kind ~= 'warning' and kind ~= 'error' then
+		kind = 'info'
+	end
+	notify(kind, message)
+end)
+
+--- @author DemiAutomatic
+--- @method OpxHud.Runtime.SetVisible
+--- @description Shows or hides the surface, kept off screen while down.
+--- @param value {boolean}
+--- @returns {boolean}
+function OpxHud.Runtime.SetVisible(value)
+	local wanted = value ~= false
+	if State.visible == wanted then return State.visible end
+	State.visible = wanted
+	draw(true)
+	return State.visible
 end
 
---- The key does what `/hud` with no argument does, here rather than through the server: that
---- command decides nothing, it only sends this client back a toggle.
-AddEventHandler("onClientResourceStart", function(name)
-  if name ~= RESOURCE then return end
-  local keys = Config.KEYS
-  if keys ~= nil and type(keys) ~= "table" then
-    Open77.log.warn("config: KEYS must be a table; using the default key")
-    keys = nil
-  end
-  keys = keys or {}
-  Keys.register(KEY_TOGGLE, "hud.key.toggle", Keys.setting("KEYS.TOGGLE", keys.TOGGLE, "F8"),
-    function() Runtime.setVisible(not State.visible) end)
+--- @author DemiAutomatic
+--- @event onClientResourceStart
+--- @description Registers the show and hide key mapping on this start.
+--- @param name {string}
+AddEventHandler('onClientResourceStart', function(name)
+	if name ~= RESOURCE then return end
+	local keys = Config.KEYS
+	if keys ~= nil and type(keys) ~= 'table' then
+		Open77.log.warn('config: KEYS must be a table; using the default key')
+		keys = nil
+	end
+	keys = keys or {}
+	Keys.Register(KEY_TOGGLE, 'hud.key.toggle', Keys.Setting('KEYS.TOGGLE', keys.TOGGLE, 'F8'),
+		function() Runtime.SetVisible(not State.visible) end)
 end)
 
-AddEventHandler("onClientResourceStart", function(name)
-  if name ~= RESOURCE then return end
+--- @author DemiAutomatic
+--- @event onClientResourceStart
+--- @description Creates the surface, wires its channels and catches up once.
+--- @param name {string}
+AddEventHandler('onClientResourceStart', function(name)
+	if name ~= RESOURCE then return end
 
-  local reason
-  page, reason = WebUI.create({
-    entry = "web/index.html",
-    layer = "hud",
-    width = SURFACE_WIDTH,
-    height = SURFACE_HEIGHT,
-    fps = 30,
-    zIndex = 705,
-    transparent = true,
-    -- created visible: a surface created hidden never uploads a frame once shown
-    visible = true,
-  })
-  if page == nil then
-    Open77.log.error("WebUI surface failed: " .. tostring(reason))
-    return
-  end
+	local reason
+	page, reason = WebUI.create({
+		entry = 'web/index.html',
+		layer = 'hud',
+		width = SURFACE_WIDTH,
+		height = SURFACE_HEIGHT,
+		fps = 30,
+		zIndex = 705,
+		transparent = true,
+		visible = true,
+	})
+	if page == nil then
+		Open77.log.error('WebUI surface failed: ' .. tostring(reason))
+		return
+	end
 
-  page:on("hud:ready", function()
-    pageReady = true
-    sendConfig()
-    -- forced: the page is new, so `drawn` describes a DOM that no longer exists
-    draw(true)
-  end)
+	page:on('hud:ready', function()
+		pageReady = true
+		if page == nil then return end
+		send('hud:config', {
+			anchor = Config.ANCHOR,
+			infoAnchor = Config.INFO_ANCHOR,
+			width = Config.WIDTH,
+			segments = GAUGE_SEGMENTS,
+			voiceSegments = Voice.segments,
+			vehicleAnchor = Vehicle.enabled and Config.VEHICLE.ANCHOR or nil,
+			rpmSegments = RPM_SEGMENTS,
+		})
+		if State.data ~= nil then sampleVitals() end
+		draw(true)
+		drawLive(true)
+	end)
 
-  page:on("hud:diag", function(payload)
-    if type(payload) ~= "table" then return end
-    Open77.log.info("page: " .. tostring(payload.text or ""))
-  end)
+	page:on('hud:diag', function(payload)
+		if type(payload) ~= 'table' then return end
+		Open77.log.info('page: ' .. tostring(payload.text or ''))
+	end)
 
-  -- one read of each source, for a character that loaded before this resource did; every
-  -- later change arrives on an event handled above
-  CreateThread(function()
-    local ok, failure = pcall(pullNeeds)
-    if not ok then Open77.log.error("needs: " .. tostring(failure)) end
-    ok, failure = pcall(pull)
-    if not ok then Open77.log.error("core: " .. tostring(failure)) end
-    draw()
-  end)
+	CreateThread(function()
+		pullDown()
+		pullNeeds()
+		pull()
+		draw()
+	end)
+
+	CreateThread(function()
+		while page ~= nil do
+			if pageReady and State.data ~= nil then
+				sampleVitals()
+				draw()
+			end
+			drawLive()
+			Wait(TICK_MS)
+		end
+	end)
 end)
 
-AddEventHandler("onClientResourceStop", function(name)
-  -- opx77_status takes its chip strip down on the way out but raises no farewell for the
-  -- needs, so the gauges it owns leave the frame here rather than staying at their last value
-  if name == STATUS then
-    State.setNeeds(nil, false)
-    draw()
-    return
-  end
-  if name ~= RESOURCE then return end
-  page, pageReady, drawn = nil, false, nil
+--- @author DemiAutomatic
+--- @event onClientResourceStop
+--- @description Unloads on core stop, blanks needs, lifts down, forgets the page.
+--- @param name {string}
+AddEventHandler('onClientResourceStop', function(name)
+	if name == CORE then return unload() end
+	if name == MEDIC then return setDown(false) end
+	if name == STATUS then
+		State.SetNeeds(nil, false)
+		draw()
+		return
+	end
+	if name ~= RESOURCE then return end
+	page, pageReady, drawn, drawnWidgets = nil, false, nil, {}
 end)
