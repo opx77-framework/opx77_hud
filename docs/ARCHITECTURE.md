@@ -258,6 +258,10 @@ puces par ton (`--hud-chip-*-line`) et le bleu du type de dégât `shock` (`--hu
 `--hud-shock-line`), la seule couleur de puce absente d'`open77-ui.css`. `web/hud.js` et
 `web/index.html` n'écrivent aucune couleur.
 
+La ligne de chat de repli (`chatLine`) ne porte pas de champ `color` : elle ne donne que son
+`type` (`info` ou `error`), et ce sont les jetons `.line.info` / `.line.error` de la feuille
+d'`opx77_chat` qui la colorent, comme toute ligne du chat.
+
 ## Invariants
 
 - **Une surface WebUI par resource**, créée par son propre code, canaux nommés `hud:<action>`.

@@ -154,12 +154,10 @@ local notifyReported = false
 --- @param kind {string} info, success, warning or error.
 --- @param message {string}
 local function chatLine(kind, message)
-	local accepted = kind == 'info' or kind == 'success'
 	TriggerEvent('chat:addMessage', {
-		type = accepted and 'info' or 'error',
+		type = (kind == 'info' or kind == 'success') and 'info' or 'error',
 		author = locale('hud.title'),
 		text = message,
-		color = accepted and { 120, 220, 232 } or { 255, 76, 92 },
 	})
 end
 
