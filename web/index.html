@@ -38,16 +38,22 @@
   <span class="voice-heard" id="voice-heard"><i></i><b id="voice-heard-count"></b></span>
 </div>
 
-<!-- Vehicle: shown only while the character sits in one. -->
-<div class="vehicle anchor-bottom-right" id="vehicle">
-  <div class="vehicle-top">
-    <span class="vehicle-speed" id="vehicle-speed">0</span>
-    <span class="vehicle-unit" id="vehicle-unit"></span>
-    <span class="vehicle-gear" id="vehicle-gear">N</span>
-  </div>
-  <div class="vehicle-rpm" id="vehicle-rpm-row">
-    <span class="blocks" id="vehicle-rpm"></span>
-    <span class="vehicle-label" id="vehicle-rpm-label"></span>
+<!-- Vehicle: a round dial, shown only while the character sits in one.
+     Outer ring: engine speed, red past the redline. Inner ring: integrity. -->
+<div class="vehicle anchor-top-center" id="vehicle">
+  <div class="vehicle-dial">
+    <svg class="vehicle-rings" viewBox="0 0 120 120" aria-hidden="true">
+      <path class="ring-track" d="M23.2 96.8A52 52 0 1 1 96.8 96.8" pathLength="100"/>
+      <path class="ring-redline" d="M23.2 96.8A52 52 0 1 1 96.8 96.8" pathLength="100"/>
+      <path class="ring-rpm" id="vehicle-rpm" d="M23.2 96.8A52 52 0 1 1 96.8 96.8" pathLength="100"/>
+      <path class="ring-inner-track" d="M29 91A44 44 0 1 1 91 91" pathLength="100"/>
+      <path class="ring-integrity" id="vehicle-integrity-ring" d="M29 91A44 44 0 1 1 91 91" pathLength="100"/>
+    </svg>
+    <div class="vehicle-core">
+      <span class="vehicle-speed" id="vehicle-speed">0</span>
+      <span class="vehicle-unit" id="vehicle-unit"></span>
+      <span class="vehicle-gear" id="vehicle-gear">N</span>
+    </div>
   </div>
   <div class="vehicle-meta">
     <span class="vehicle-integrity" id="vehicle-integrity-row">

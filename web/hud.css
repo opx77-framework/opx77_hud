@@ -430,42 +430,89 @@ body.open .gauges { transform: none; }
   50% { opacity: 1; }
 }
 
-/* Vehicle: a cut plate in the configured corner, only while seated in a vehicle. */
+/* Vehicle: a round dial, only while seated in a vehicle. */
 .vehicle {
   position: fixed;
   display: flex;
   flex-direction: column;
+  align-items: center;
   gap: var(--op77-space-1);
-  min-width: 190px;
-  padding: var(--op77-space-2) calc(var(--op77-space-3) + 6px) var(--op77-space-2) var(--op77-space-3);
-  background: var(--op77-panel-quiet);
-  border: 1px solid var(--op77-line-hud);
-  border-left: var(--op77-rule) solid var(--op77-accent);
-  clip-path: var(--op77-notch-clip);
+  --center-x: 0px;
   opacity: 0;
-  transform: translateY(var(--slide, 8px));
+  transform: translate(var(--center-x), var(--slide, 8px));
   transition: opacity var(--op77-dur) var(--op77-ease), transform var(--op77-dur) var(--op77-ease);
 }
 
-.vehicle.live { opacity: 1; transform: none; }
+.vehicle.live { opacity: 1; transform: translate(var(--center-x), 0); }
 
 .vehicle.anchor-bottom-left,
 .vehicle.anchor-top-left { left: var(--op77-inset-x); }
 .vehicle.anchor-bottom-right,
 .vehicle.anchor-top-right { right: var(--op77-inset-x); }
+.vehicle.anchor-top-center,
+.vehicle.anchor-bottom-center { left: 50%; --center-x: -50%; }
 .vehicle.anchor-bottom-left,
-.vehicle.anchor-bottom-right { bottom: var(--op77-inset-y); --slide: 8px; }
+.vehicle.anchor-bottom-right,
+.vehicle.anchor-bottom-center { bottom: var(--op77-inset-y); --slide: 8px; }
 .vehicle.anchor-top-left,
-.vehicle.anchor-top-right { top: var(--op77-inset-y); --slide: -8px; }
+.vehicle.anchor-top-right,
+.vehicle.anchor-top-center { top: var(--op77-inset-y); --slide: -8px; }
 
-.vehicle-top {
+.vehicle-dial {
+  position: relative;
+  width: 156px;
+  height: 156px;
+  border-radius: 50%;
+  background: radial-gradient(circle, var(--op77-panel-quiet) 58%, transparent 72%);
+}
+
+.vehicle-rings {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  fill: none;
+  stroke-linecap: butt;
+}
+
+.ring-track,
+.ring-inner-track { stroke: var(--op77-panel-raised); }
+.ring-track,
+.ring-redline,
+.ring-rpm { stroke-width: 7; }
+.ring-inner-track,
+.ring-integrity { stroke-width: 2.5; }
+
+/* The last stretch of the outer ring, tinted, before the needle reaches it. */
+.ring-redline {
+  stroke: var(--op77-danger);
+  opacity: 0.35;
+  stroke-dasharray: 15 100;
+  stroke-dashoffset: -85;
+}
+
+.ring-rpm,
+.ring-integrity {
+  stroke-dasharray: 0 100;
+  transition: stroke-dasharray var(--op77-dur-fast) linear, stroke var(--op77-dur-fast) var(--op77-ease);
+}
+.ring-rpm { stroke: var(--op77-accent); }
+.ring-rpm.redline { stroke: var(--op77-danger); }
+.ring-integrity { stroke: var(--op77-text-dim); }
+.ring-integrity.warn { stroke: var(--op77-warn); }
+.ring-integrity.bad { stroke: var(--op77-danger); }
+
+.vehicle-core {
+  position: absolute;
+  inset: 0;
   display: flex;
-  align-items: baseline;
-  gap: var(--op77-space-2);
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
 }
 
 .vehicle-speed {
-  min-width: 3ch;
   font: 700 var(--op77-fs-hero) / 1 var(--op77-font-display);
   letter-spacing: var(--op77-track-head);
   color: var(--op77-text);
@@ -473,16 +520,19 @@ body.open .gauges { transform: none; }
 }
 
 .vehicle-unit {
-  flex: 1;
-  font: 700 var(--op77-fs-label) / 1 var(--op77-font-mono);
+  font: 700 var(--op77-fs-micro) / 1 var(--op77-font-mono);
   letter-spacing: var(--op77-track-label);
   color: var(--op77-text-dim);
 }
 
+/* The gear sits in the dial's open bottom, between the ring's ends. */
 .vehicle-gear {
-  align-self: center;
-  min-width: 26px;
-  padding: 5px 6px 4px;
+  position: absolute;
+  bottom: 14px;
+  left: 50%;
+  transform: translateX(-50%);
+  min-width: 24px;
+  padding: 4px 6px 3px;
   background: var(--op77-accent);
   clip-path: polygon(0 0, calc(100% - 6px) 0, 100% 6px, 100% 100%, 0 100%);
   font: 700 var(--op77-fs-lead) / 1 var(--op77-font-mono);
@@ -492,30 +542,6 @@ body.open .gauges { transform: none; }
 
 .vehicle-gear.neutral { background: var(--op77-panel-raised); color: var(--op77-text-dim); }
 .vehicle-gear.reverse { background: var(--op77-warn); }
-
-.vehicle-rpm {
-  display: flex;
-  align-items: center;
-  gap: var(--op77-space-2);
-}
-
-.vehicle-rpm .blocks {
-  flex: 1;
-  display: flex;
-  gap: 2px;
-}
-
-.vehicle-rpm .block {
-  flex: 1;
-  height: 6px;
-  min-width: 3px;
-  background: var(--op77-panel-raised);
-  clip-path: polygon(3px 0, 100% 0, calc(100% - 3px) 100%, 0 100%);
-  transition: background var(--op77-dur-fast) var(--op77-ease);
-}
-
-.vehicle-rpm .block.on { background: var(--op77-text-dim); }
-.vehicle-rpm .block.on:nth-last-child(-n+2) { background: var(--op77-danger); }
 
 .vehicle-label {
   font: 400 var(--op77-fs-micro) / 1 var(--op77-font-mono);
@@ -528,7 +554,7 @@ body.open .gauges { transform: none; }
 .vehicle-meta {
   display: flex;
   align-items: baseline;
-  justify-content: space-between;
+  justify-content: center;
   gap: var(--op77-space-2);
 }
 

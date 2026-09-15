@@ -24,7 +24,6 @@ OpxHud.Locale.register('fr', {
 	['hud.voice.open'] = 'OUVERT',
 
 	['hud.vehicle.unit'] = 'KM/H',
-	['hud.vehicle.rpm'] = 'TR/MIN',
 	['hud.vehicle.integrity'] = 'INTÉGRITÉ',
 	['hud.vehicle.airborne'] = 'EN L\'AIR',
 })

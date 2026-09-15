@@ -15,7 +15,7 @@
 --- @field VOICE {table|false} Microphone indicator on the right edge, vertically centred; false builds none.
 --- @field VOICE.HIDE_OPEN_VOICE {boolean} Hide the open-voice line while this indicator stands in for it.
 --- @field VEHICLE {table|false} Speed, gear, RPM and integrity while in a vehicle; false builds none.
---- @field VEHICLE.ANCHOR {string} Read-out corner; same four values as ANCHOR.
+--- @field VEHICLE.ANCHOR {string} Dial position: ANCHOR's four corners, top-center or bottom-center.
 --- @field VEHICLE.PASSENGER {boolean} Also shown from a passenger seat; false shows it to the driver only.
 
 OPX_HUD_CONFIG = {
@@ -43,7 +43,7 @@ OPX_HUD_CONFIG = {
 		HIDE_OPEN_VOICE = true,
 	},
 	VEHICLE = {
-		ANCHOR = 'bottom-right',
+		ANCHOR = 'top-center',
 		PASSENGER = true,
 	},
 }

@@ -49,7 +49,6 @@
 ---@field segments integer
 ---@field voiceSegments integer      segments of the voice input meter
 ---@field vehicleAnchor HudAnchor|nil where the vehicle read-out stands, nil while disabled
----@field rpmSegments integer        segments of the vehicle RPM bar
 
 --- Live health and armour, as `OpxHud.Vitals.Sample` reads them from `Open77.stats`.
 ---@class HudVitals
@@ -89,7 +88,6 @@
 ---@field tone HudTone|nil        integrity at or below 33 or 15 percent
 ---@field airborne boolean
 ---@field unit string             translated labels, added by client/main.lua
----@field rpmLabel string
 ---@field integrityLabel string
 ---@field airborneLabel string
 
