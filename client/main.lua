@@ -2,8 +2,6 @@
 --- @file client/main.lua
 --- @description The WebUI surface, its frames, and the opx77_core and opx77_status links.
 
-OpxHud = OpxHud or {}
-
 local Config = OPX_HUD_CONFIG
 
 --- @author DemiAutomatic

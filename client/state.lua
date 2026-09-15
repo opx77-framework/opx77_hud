@@ -2,8 +2,6 @@
 --- @file client/state.lua
 --- @description Character and needs snapshots, and the rows the page draws.
 
-OpxHud = OpxHud or {}
-
 local Config = OPX_HUD_CONFIG
 
 OpxHud.State = {}

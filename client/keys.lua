@@ -2,8 +2,6 @@
 --- @file client/keys.lua
 --- @description Validates configured keys and declares rebindable key mappings.
 
-OpxHud = OpxHud or {}
-
 OpxHud.Keys = {}
 local Keys = OpxHud.Keys
 
@@ -29,9 +27,7 @@ end
 --- @description Whether another surface holds the keyboard right now.
 --- @returns {boolean}
 local function captured()
-	local input = type(Open77) == 'table' and Open77.input or nil
-	if type(input) ~= 'table' or type(input.isCaptured) ~= 'function' then return false end
-	local read, answer = pcall(input.isCaptured)
+	local read, answer = pcall(Open77.input.isCaptured)
 	return read and answer == true
 end
 
@@ -45,11 +41,6 @@ end
 --- @returns {boolean}
 function OpxHud.Keys.Register(id, nameKey, key, onPressed)
 	if key == false then return false end
-	if type(RegisterKeyMapping) ~= 'function' then
-		Open77.log.warn(('key mapping %s not registered: this client build has no ' ..
-			'RegisterKeyMapping'):format(id))
-		return false
-	end
 	local function pressed()
 		if captured() then return end
 		local ran, failure = pcall(onPressed)

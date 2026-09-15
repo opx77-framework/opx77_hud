@@ -2,8 +2,6 @@
 --- @file client/vanilla.lua
 --- @description Hides the game's own HUD components and restores them on stop.
 
-OpxHud = OpxHud or {}
-
 local Config = OPX_HUD_CONFIG
 
 OpxHud.Vanilla = {}
@@ -24,7 +22,6 @@ local found = nil
 --- @description Answers Open77.hud when it can set visibility, else nil.
 --- @returns {table|nil}
 local function api()
-	if type(Open77) ~= 'table' then return nil end
 	local hud = Open77.hud
 	if type(hud) ~= 'table' then return nil end
 	if type(hud.setVisible) ~= 'function' then return nil end
@@ -37,7 +34,6 @@ end
 --- @param hud {table}
 --- @returns {table<string, boolean>|nil}
 local function known(hud)
-	if type(hud.components) ~= 'function' then return nil end
 	local ok, list = pcall(hud.components)
 	if not ok or type(list) ~= 'table' then return nil end
 	local set = {}
@@ -56,7 +52,6 @@ end
 --- @param component {string}
 --- @returns {boolean|nil}
 local function visibility(hud, component)
-	if type(hud.isVisible) ~= 'function' then return nil end
 	local ok, value = pcall(hud.isVisible, component)
 	if not ok or type(value) ~= 'boolean' then return nil end
 	return value
@@ -127,7 +122,7 @@ end
 function OpxHud.Vanilla.Snapshot()
 	local hud = api()
 	local live = nil
-	if hud ~= nil and type(hud.state) == 'function' then
+	if hud ~= nil then
 		local ok, value = pcall(hud.state)
 		if ok and type(value) == 'table' then live = value end
 	end
