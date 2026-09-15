@@ -87,20 +87,17 @@ body.open .gauges { transform: none; }
   min-width: 0;
 }
 
+/* Sheared plates, drawn without a border. */
 .gauge .block {
   flex: 1;
   height: 10px;
   min-width: 3px;
-  background: var(--op77-panel);
-  border: 1px solid var(--op77-line-hud);
-  transition: background var(--op77-dur-fast) var(--op77-ease),
-              border-color var(--op77-dur-fast) var(--op77-ease);
+  background: var(--op77-panel-raised);
+  clip-path: polygon(4px 0, 100% 0, calc(100% - 4px) 100%, 0 100%);
+  transition: background var(--op77-dur-fast) var(--op77-ease);
 }
 
-.gauge .block.on {
-  background: var(--op77-text-dim);
-  border-color: var(--op77-text-dim);
-}
+.gauge .block.on { background: var(--op77-text-dim); }
 
 .gauge .value {
   flex: none;
@@ -112,13 +109,13 @@ body.open .gauges { transform: none; }
   font-variant-numeric: tabular-nums;
 }
 
-.gauge.health .block.on { background: var(--op77-accent); border-color: var(--op77-accent); }
+.gauge.health .block.on { background: var(--op77-accent); }
 .gauge.health .icon { color: var(--op77-accent); }
 
 /* Which value is low is decided in Lua. */
-.gauge.warn .block.on { background: var(--op77-warn); border-color: var(--op77-warn); }
+.gauge.warn .block.on { background: var(--op77-warn); }
 .gauge.warn .icon, .gauge.warn .value { color: var(--op77-warn); }
-.gauge.bad .block.on { background: var(--op77-danger); border-color: var(--op77-danger); }
+.gauge.bad .block.on { background: var(--op77-danger); }
 .gauge.bad .icon, .gauge.bad .value { color: var(--op77-danger); }
 
 .info {
@@ -163,17 +160,7 @@ body.open .gauges { transform: none; }
 
 .info .line.on .value { color: var(--op77-ok); }
 
-/* Sheared plates: matches the base rule on specificity, so keep it below. */
-.gauge .block {
-  clip-path: polygon(4px 0, 100% 0, calc(100% - 4px) 100%, 0 100%);
-  border: 0;
-  background: var(--op77-panel-raised);
-}
-.gauge .block.on { border: 0; }
-
 /* Status effects, owned by opx77_status and drawn on this surface. */
-body.open { opacity: 1; }
-
 .strip {
   position: fixed;
   display: flex;
@@ -199,12 +186,14 @@ body.open { opacity: 1; }
   gap: var(--op77-space-2);
 }
 
+/* The cut corner; the extra 10px of right padding pays for what the clip-path cuts away. */
 .chip {
   position: relative;
   display: flex;
   align-items: center;
   gap: var(--op77-space-2);
-  padding: 5px var(--op77-space-3);
+  padding: 5px calc(var(--op77-space-3) + 10px) 5px var(--op77-space-3);
+  clip-path: polygon(0 0, 100% 0, calc(100% - 10px) 100%, 0 100%);
   background: var(--op77-panel);
   border: 1px solid var(--op77-line-hud);
   font: 700 var(--op77-fs-label) / 1 var(--op77-font-mono);
@@ -269,12 +258,4 @@ body.open { opacity: 1; }
   background: var(--op77-panel-quiet);
   border-style: dashed;
   color: var(--op77-text-faint);
-}
-
-/* The cut corner: matches the base .chip on specificity, so keep it below. */
-.chip {
-  clip-path: polygon(0 0, 100% 0, calc(100% - 10px) 100%, 0 100%);
-  /* the extra 10px pays for the corner the clip-path cuts away */
-  padding-right: calc(var(--op77-space-3) + 10px);
-  border-radius: 0;
 }
