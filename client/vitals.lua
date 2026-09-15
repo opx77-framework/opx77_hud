@@ -39,8 +39,20 @@ local function share(pool, flatMaximum)
 end
 
 --- @author DemiAutomatic
+--- @method bodyHealth
+--- @description The local body's health points as the game shows them, or nil.
+--- @returns {number|nil}
+local function bodyHealth()
+	local character = Open77.character
+	if type(character) ~= 'table' or type(character.state) ~= 'function' then return nil end
+	local read, body = pcall(character.state)
+	if not read or type(body) ~= 'table' or not finite(body.health) then return nil end
+	return body.health
+end
+
+--- @author DemiAutomatic
 --- @method OpxHud.Vitals.Sample
---- @description Reads Open77.stats once: health and stamina as percents of their maximums, armour in points.
+--- @description Reads the body and Open77.stats once: health and stamina as percents of their maximums, armour in points.
 --- @returns {HudVitals|nil, string|nil}
 function OpxHud.Vitals.Sample()
 	local stats = Open77.stats
@@ -52,6 +64,14 @@ function OpxHud.Vitals.Sample()
 	-- The client documents pool tables and the server flat numbers; either shape is read.
 	local health = share(state.health, state.maxHealth)
 	if health == nil then return nil, nil end
+	-- Damage the server never hears of (falls, npcs) only lowers the body, so the body wins,
+	-- measured against the canonical maximum.
+	local body = bodyHealth()
+	if body ~= nil then
+		local pool = state.health
+		local maximum = type(pool) == 'table' and firstFinite(pool.maximum, pool.max) or state.maxHealth
+		health = share(body, maximum)
+	end
 	local armor = finite(state.armor) and math.max(0, state.armor) or 0
 	return { health = health, armor = armor, stamina = share(state.stamina, state.maxStamina) }, nil
 end
