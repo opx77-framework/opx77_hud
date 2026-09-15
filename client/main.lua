@@ -1,6 +1,6 @@
 --- @author DemiAutomatic
 --- @file client/main.lua
---- @description The WebUI surface, its frames, and the opx77_core, opx77_status and opx77_medic links.
+--- @description The WebUI surface, its frames, the live vitals, voice and vehicle sampling, and the opx77_core, opx77_status and opx77_medic links.
 
 local Config = OPX_HUD_CONFIG
 
@@ -22,6 +22,19 @@ local SURFACE_HEIGHT = 1080
 local State = OpxHud.State
 local finite = State.Finite
 local Keys = OpxHud.Keys
+local Vitals = OpxHud.Vitals
+local Vehicle = OpxHud.Vehicle
+local Voice = OpxHud.Voice
+
+--- @author DemiAutomatic
+--- @type {integer}
+--- @description Milliseconds between two samples of the live vitals, voice and vehicle.
+local TICK_MS = 50
+
+--- @author DemiAutomatic
+--- @type {integer}
+--- @description Number of segments the vehicle RPM bar is cut into.
+local RPM_SEGMENTS = 10
 
 --- @author DemiAutomatic
 --- @type {string}
@@ -72,6 +85,11 @@ local EFFECTS_EVENT = 'opx77:status:effects'
 local MEDIC_EVENT = 'opx77:medic:stateChanged'
 
 --- @author DemiAutomatic
+--- @type {string}
+--- @description Local event the client raises when the local player's health, stamina or armour moved.
+local STATS_EVENT = 'open77:playerStatsChanged'
+
+--- @author DemiAutomatic
 --- @type {table|nil}
 --- @description The WebUI surface, nil until created or after this stop.
 local page
@@ -85,6 +103,11 @@ local pageReady = false
 --- @type {string|nil}
 --- @description Signature of the last frame the page accepted.
 local drawn = nil
+
+--- @author DemiAutomatic
+--- @type {table<string, string>}
+--- @description Signature of the last voice and vehicle message the page accepted, by widget name.
+local drawnWidgets = {}
 
 --- @author DemiAutomatic
 --- @method send
@@ -134,6 +157,64 @@ local function draw(force)
 		sent = send('hud:frame', view)
 	end
 	drawn = sent and signature or nil
+end
+
+--- @author DemiAutomatic
+--- @method drawWidget
+--- @description Sends one voice or vehicle message when its picture changed; nil turns the widget off.
+--- @param name {string} voice or vehicle, which names the message hud:<name>.
+--- @param view {table|nil}
+--- @param signature {string}
+--- @param force {boolean|nil} Skip the signature test.
+local function drawWidget(name, view, signature, force)
+	if not force and drawnWidgets[name] == signature then return end
+	local payload = view or {}
+	payload.active = view ~= nil
+	local sent = send('hud:' .. name, payload)
+	drawnWidgets[name] = sent and signature or nil
+end
+
+--- @author DemiAutomatic
+--- @method drawLive
+--- @description Samples and sends the voice indicator and the vehicle read-out while a character is shown.
+--- @param force {boolean|nil} Skip the signature tests.
+local function drawLive(force)
+	if page == nil or not pageReady then return end
+	local shown = State.visible and not State.down and State.data ~= nil
+
+	local voice = shown and Voice.Sample() or nil
+	drawWidget('voice', voice, Voice.Signature(voice), force)
+
+	local vehicle = shown and Vehicle.Sample() or nil
+	local signature = Vehicle.Signature(vehicle)
+	if vehicle ~= nil then
+		vehicle.unit = locale('hud.vehicle.unit')
+		vehicle.rpmLabel = locale('hud.vehicle.rpm')
+		vehicle.integrityLabel = locale('hud.vehicle.integrity')
+		vehicle.airborneLabel = locale('hud.vehicle.airborne')
+	end
+	drawWidget('vehicle', vehicle, signature, force)
+end
+
+--- @author DemiAutomatic
+--- @type {boolean}
+--- @description Whether an unreadable live vitals API has already been logged.
+local vitalsReported = false
+
+--- @author DemiAutomatic
+--- @method sampleVitals
+--- @description Reads live health and armour, keeping the last reading through an empty answer.
+local function sampleVitals()
+	local values, reason = Vitals.Sample()
+	if values ~= nil then
+		State.SetVitals(values)
+		return
+	end
+	if reason == nil then return end
+	State.SetVitals(nil)
+	if vitalsReported then return end
+	vitalsReported = true
+	Open77.log.warn(('live vitals unreadable (%s): health falls back to the saved character'):format(reason))
 end
 
 --- @author DemiAutomatic
@@ -247,11 +328,12 @@ end
 
 --- @author DemiAutomatic
 --- @event opx77:client:onPlayerLoaded
---- @description Adopts the loaded character's snapshot and redraws.
+--- @description Adopts the loaded character's snapshot, reads its live vitals and redraws.
 --- @param playerData {PlayerData}
 AddEventHandler('opx77:client:onPlayerLoaded', function(playerData)
 	if type(playerData) ~= 'table' then return end
 	State.data = playerData
+	sampleVitals()
 	draw()
 end)
 
@@ -368,17 +450,28 @@ end)
 
 --- @author DemiAutomatic
 --- @method unload
---- @description Drops the character and its needs, and redraws.
+--- @description Drops the character, its live vitals and its needs, and redraws.
 local function unload()
 	State.data = nil
+	State.SetVitals(nil)
 	State.SetNeeds(nil, false)
 	draw()
+	drawLive()
 end
 
 --- @author DemiAutomatic
 --- @event opx77:client:onPlayerUnloaded
---- @description Drops the character and its needs, and redraws.
+--- @description Drops the character, its live vitals and its needs, and redraws.
 AddEventHandler('opx77:client:onPlayerUnloaded', unload)
+
+--- @author DemiAutomatic
+--- @event open77:playerStatsChanged
+--- @description Reads the live health and armour at once and redraws, ahead of the next tick.
+AddEventHandler(STATS_EVENT, function()
+	if State.data == nil then return end
+	sampleVitals()
+	draw()
+end)
 
 --- @author DemiAutomatic
 --- @event opx77_hud:visibility
@@ -467,8 +560,13 @@ AddEventHandler('onClientResourceStart', function(name)
 			infoAnchor = Config.INFO_ANCHOR,
 			width = Config.WIDTH,
 			segments = GAUGE_SEGMENTS,
+			voiceSegments = Voice.segments,
+			vehicleAnchor = Vehicle.enabled and Config.VEHICLE.ANCHOR or nil,
+			rpmSegments = RPM_SEGMENTS,
 		})
+		if State.data ~= nil then sampleVitals() end
 		draw(true)
+		drawLive(true)
 	end)
 
 	page:on('hud:diag', function(payload)
@@ -481,6 +579,17 @@ AddEventHandler('onClientResourceStart', function(name)
 		pullNeeds()
 		pull()
 		draw()
+	end)
+
+	CreateThread(function()
+		while page ~= nil do
+			if pageReady and State.data ~= nil then
+				sampleVitals()
+				draw()
+			end
+			drawLive()
+			Wait(TICK_MS)
+		end
 	end)
 end)
 
@@ -497,5 +606,5 @@ AddEventHandler('onClientResourceStop', function(name)
 		return
 	end
 	if name ~= RESOURCE then return end
-	page, pageReady, drawn = nil, false, nil
+	page, pageReady, drawn, drawnWidgets = nil, false, nil, {}
 end)

@@ -20,6 +20,17 @@ OpxHud.State.down = false
 ---@type NeedValues|nil
 OpxHud.State.needs = nil
 
+--- Health and armour the game reports right now, read through `Open77.stats`, or nil while
+--- unreadable. The health gauge prefers it over `PlayerData.metadata`, which opx77_core only
+--- saves and never updates from gameplay.
+---@type HudVitals|nil
+OpxHud.State.vitals = nil
+
+--- Adopts a live vitals reading. Anything but a table clears it, and the gauge falls back to
+--- the saved character.
+---@param values HudVitals|nil
+function OpxHud.State.SetVitals(values) end
+
 --- Adopts what opx77_status published. Anything but `ready == true` with a table clears them.
 ---@param values NeedValues|nil
 ---@param ready boolean

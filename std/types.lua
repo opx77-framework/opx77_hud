@@ -47,6 +47,50 @@
 ---@field infoAnchor HudAnchor
 ---@field width number
 ---@field segments integer
+---@field voiceSegments integer      segments of the voice input meter
+---@field vehicleAnchor HudAnchor|nil where the vehicle read-out stands, nil while disabled
+---@field rpmSegments integer        segments of the vehicle RPM bar
+
+--- Live health and armour, as `OpxHud.Vitals.Sample` reads them from `Open77.stats`.
+---@class HudVitals
+---@field health number  percent of the reported maximum, 0 upwards
+---@field armor number   points, 0 upwards
+
+--- The state the microphone indicator is drawn in.
+---@alias HudVoiceState
+---| "idle"      capture on, nothing picked up
+---| "detected"  the microphone picks up a voice that is not transmitted
+---| "talking"   transmitting
+---| "muted"     capture disabled in the pause menu
+---| "offline"   no voice backend
+
+--- The payload of `hud:voice`. `{ active = false }` alone takes the indicator off screen.
+---@class HudVoiceView
+---@field active boolean
+---@field state HudVoiceState
+---@field caption string          translated word under the mic
+---@field lit integer             meter segments lit, 0 while muted or offline
+---@field mode string             translated reach mode, or the proximity word without open-voice
+---@field distance string|nil     translated reach in metres
+---@field index integer|nil       position of the reach mode in open-voice's cycle
+---@field count integer|nil       number of reach modes in that cycle
+---@field key string|nil          open-voice's cycle key
+---@field activation string|nil   open77_voice's push-to-talk key, or the open-mic word under voice activation
+---@field heard integer           players heard right now, 0 hides the counter
+
+--- The payload of `hud:vehicle`. `{ active = false }` alone takes the read-out off screen.
+---@class HudVehicleView
+---@field active boolean
+---@field speed integer           km/h, 0..999
+---@field gear string             "R", "N" or the forward gear
+---@field rpm integer|nil         percent of the rated maximum, nil when unreported
+---@field integrity integer|nil   percent, nil when unreported
+---@field tone HudTone|nil        integrity at or below 33 or 15 percent
+---@field airborne boolean
+---@field unit string             translated labels, added by client/main.lua
+---@field rpmLabel string
+---@field integrityLabel string
+---@field airborneLabel string
 
 --- Every export answers a table carrying `ok` and never raises. Nothing here refuses, so
 --- there is no error code.
@@ -76,7 +120,8 @@
 ---@field money table<string, number>|nil  money type -> amount
 ---@field job PlayerJob|nil
 
---- Health and armour stay in opx77_core; the gameplay needs are opx77_status's.
+--- Saved health and armour. opx77_core only writes them at character creation and never from
+--- gameplay, so the gauge reads `HudVitals` first and these only as a fallback.
 ---@class PlayerMetadata
 ---@field health number  0-100
 ---@field armor number   0-100

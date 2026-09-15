@@ -1,6 +1,6 @@
 --- @author DemiAutomatic
 --- @file client/state.lua
---- @description Character and needs snapshots, and the rows the page draws.
+--- @description Character, live vitals and needs snapshots, and the rows the page draws.
 
 local Config = OPX_HUD_CONFIG
 
@@ -26,6 +26,19 @@ OpxHud.State.down = false
 --- @type {NeedValues|nil}
 --- @description Needs opx77_status published for the live character, nil until ready.
 OpxHud.State.needs = nil
+
+--- @author DemiAutomatic
+--- @type {HudVitals|nil}
+--- @description Health and armour the game reports right now, nil while unreadable.
+OpxHud.State.vitals = nil
+
+--- @author DemiAutomatic
+--- @method OpxHud.State.SetVitals
+--- @description Adopts a live vitals reading, clearing it unless a table.
+--- @param values {HudVitals|nil}
+function OpxHud.State.SetVitals(values)
+	State.vitals = type(values) == 'table' and values or nil
+end
 
 --- @author DemiAutomatic
 --- @method OpxHud.State.SetNeeds
@@ -109,15 +122,15 @@ local THRESHOLD = finite(Config.NEEDS_THRESHOLD) and Config.NEEDS_THRESHOLD or n
 
 --- @author DemiAutomatic
 --- @method buildVitals
---- @description Appends the health gauge, and armour when above zero.
+--- @description Appends the health gauge, and armour when above zero, live first, saved otherwise.
 --- @param data {PlayerData}
 --- @param rows {HudRow[]}
 local function buildVitals(data, rows)
-	local metadata = data.metadata or {}
-	local health = percent(metadata.health)
+	local reading = State.vitals or data.metadata or {}
+	local health = percent(reading.health)
 	rows[#rows + 1] = { kind = 'bar', id = 'health', icon = 'health', pct = health,
 		value = tostring(health), tone = tone(health) }
-	local armor = percent(metadata.armor)
+	local armor = percent(reading.armor)
 	if armor > 0 then
 		rows[#rows + 1] = { kind = 'bar', id = 'armor', icon = 'armor', pct = armor,
 			value = tostring(armor) }

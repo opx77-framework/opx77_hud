@@ -17,6 +17,9 @@ shared_script "locales/fr.lua"
 server_script "server/main.lua"
 
 client_script "client/state.lua"
+client_script "client/vitals.lua"
+client_script "client/vehicle.lua"
+client_script "client/voice.lua"
 client_script "client/vanilla.lua"
 client_script "client/keys.lua"
 client_script "client/main.lua"
@@ -30,4 +33,7 @@ permissions {
   "network.events",
   "ui.vanilla.hud",
   "input.actions",
+  "players.stats.read",
+  "vehicles.read",
+  "voice.client",
 }
