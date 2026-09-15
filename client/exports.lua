@@ -18,19 +18,19 @@ end
 
 --- @author DemiAutomatic
 --- @export setVisible
---- @description Shows or hides the HUD and answers the resulting visibility.
+--- @description Shows or hides the HUD, answering the choice and down.
 --- @param value {boolean}
 --- @returns {HudVisibility}
 exports('setVisible', function(value)
-	return answer({ visible = Runtime.SetVisible(value) })
+	return answer({ visible = Runtime.SetVisible(value), down = State.down })
 end)
 
 --- @author DemiAutomatic
 --- @export isVisible
---- @description Answers whether the HUD is shown.
+--- @description Answers whether the HUD is chosen shown, and whether down.
 --- @returns {HudVisibility}
 exports('isVisible', function()
-	return answer({ visible = State.visible })
+	return answer({ visible = State.visible, down = State.down })
 end)
 
 --- @author DemiAutomatic

@@ -3,7 +3,7 @@
 --- @description Resource manifest declaring scripts, permissions and reload policy.
 
 resource "opx77_hud"
-version "0.6.0"
+version "0.7.0"
 open77_version ">=0.0.1"
 auto_start true
 

@@ -52,7 +52,8 @@ et dans opx77_doc ; elle n'est pas recopiée ici.
 - **Toute réponse d'export** est une table portant `ok`, construite par `answer`
   (`client/exports.lua`). Aucune export ne refuse ni ne lève : `ok` vaut toujours `true`.
 - **`setVisible`** teste `value ~= false` : toute autre valeur, `nil` compris, affiche. La réponse
-  porte la visibilité obtenue, pas celle demandée.
+  porte la visibilité obtenue, pas celle demandée, et `down` : `visible` reste le choix du joueur
+  même quand le joueur à terre empêche de dessiner (voir « Le joueur à terre »).
 - **`vanilla`** est en lecture seule, volontairement sans setter : le HUD du jeu est à cette
   resource de masquer parce qu'elle dessine le remplaçant, et un second avis venu d'ailleurs est
   la façon dont un joueur se retrouve sans aucun HUD.
@@ -89,6 +90,27 @@ Le personnage revient par `opx77:client:onPlayerLoaded` quand le core en recharg
 `opx77_status` démonte sa bande de puces en s'arrêtant mais ne lève aucun adieu pour les besoins :
 `onClientResourceStop` les efface donc ici, pour que les jauges qu'il possède quittent le cadre au
 lieu de rester figées sur leur dernière valeur.
+
+## Le joueur à terre
+
+`opx77_medic` lève l'event local `opx77:medic:stateChanged` à chaque changement ; `pullDown` lit
+son export `isDown` une fois au démarrage, pour un HUD (re)démarré alors que le joueur est déjà à
+terre. `State.down` est tenu à part de `State.visible` : `visible` est le choix du joueur (F8,
+`/hud`, `setVisible`), qui continue d'être enregistré pendant qu'il est à terre, et `down` ne fait
+que retirer la surface de l'écran. Le relever remet donc exactement ce que le joueur avait.
+
+- N'importe quelle resource peut lever ce nom : le handler ne lit que `payload.down == true` et ne
+  touche jamais `State.visible`. Le pire qu'un faux event obtienne est un HUD masqué, ou remis tel
+  que le joueur l'a choisi ; jamais un HUD que le joueur a éteint.
+- `medicHeard` retient qu'un event est arrivé depuis le démarrage : une réponse de `isDown` qui a
+  croisé un event plus récent est ignorée. Une réponse absente ou un refus ne change rien.
+- `pullDown` passe en premier dans le thread de démarrage, pour qu'un joueur déjà à terre ne voie
+  pas une frame tirée des lectures qui suivent.
+- `opx77_medic` lève un dernier `down = false` en s'arrêtant ; `onClientResourceStop` avec
+  `name == 'opx77_medic'` fait de même en filet de sécurité, une resource arrêtée ne tenant
+  personne à terre.
+- Le HUD du jeu n'a rien à faire ici : `opx77_medic` le masque par ses propres demandes de
+  masquage, et un `true` de `VANILLA` ne retire que la demande de cette resource.
 
 ## Une valeur absente n'est jamais dessinée à zéro
 
@@ -132,13 +154,13 @@ de `drawn`, la dernière acceptée par la page.
   entre pas : un compte à rebours qui avance n'est pas une nouvelle image, la page l'anime sur sa
   propre horloge.
 - Toute la surface, bande de puces comprise, tient à une seule classe `open` : masquer se décide
-  donc sur `State.visible` et non sur la vue. Une puce vivante ne garde pas à l'écran un HUD que le
-  joueur a éteint.
+  donc sur `State.visible` et `State.down` et non sur la vue. Une puce vivante ne garde pas à
+  l'écran un HUD que le joueur a éteint, ni un HUD dont le joueur est à terre.
 - Un message qui n'a pas atterri (`send` rend `false`) remet `drawn` à `nil` : la page dessine
   encore une frame plus ancienne.
 - Deux cas forcent l'envoi : `hud:ready` (la page est neuve, `drawn` décrit un DOM qui n'existe
-  plus) et un changement de visibilité (elle ne fait pas partie de la signature, donc une frame
-  sinon identique serait sautée).
+  plus) et un changement de visibilité ou de `State.down` (ni l'une ni l'autre ne font partie de
+  la signature, donc une frame sinon identique serait sautée).
 
 `send` enveloppe `page:send` dans un `pcall` : chaque appelant est un handler ou le thread de
 démarrage, et une levée de l'hôte doit être journalisée plutôt que de les terminer.
@@ -165,8 +187,8 @@ quoi qu'il se soit passé pendant son initialisation. `hud:config` part une fois
 des handlers et que la console CEF n'atteint pas le log.
 
 Le thread de démarrage lit chaque source une fois, pour un personnage chargé avant cette
-resource ; tout changement ultérieur arrive par un event. `pullNeeds` et `pull` y sont appelés
-directement, jamais sous un `pcall` : tous deux attendent une promesse, et une coroutine ne cède
+resource ; tout changement ultérieur arrive par un event. `pullDown`, `pullNeeds` et `pull` y sont
+appelés directement, jamais sous un `pcall` : tous trois attendent une promesse, et une coroutine ne cède
 pas la main à travers un `pcall` sur cette plateforme. Ni `GetResourceState`, ni
 `Open77.exports.call`, ni `promise:await()` ne lèvent : un échec est une valeur de retour.
 
@@ -268,6 +290,6 @@ d'`opx77_chat` qui la colorent, comme toute ligne du chat.
 - **Une resource qui modifie l'état du joueur le relâche à son arrêt** : la plateforme retire les
   demandes de masquage du HUD du jeu à l'arrêt et au rechargement, et `reload_policy "reconnect"`
   couvre la surface.
-- **Une resource ne touche pas aux internes d'une autre** : le core et `opx77_status` ne sont lus que
-  par leurs exports et leurs events documentés, et chaque appel est vérifié aux trois niveaux.
+- **Une resource ne touche pas aux internes d'une autre** : le core, `opx77_status` et
+  `opx77_medic` ne sont lus que par leurs exports et leurs events documentés, et chaque appel est vérifié aux trois niveaux.
 - **Un pouvoir se vérifie côté serveur** : il n'y en a pas ici ; la seule commande est ouverte.

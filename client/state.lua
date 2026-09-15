@@ -18,6 +18,11 @@ OpxHud.State.data = nil
 OpxHud.State.visible = true
 
 --- @author DemiAutomatic
+--- @type {boolean}
+--- @description Whether opx77_medic has the player down, kept apart from visible.
+OpxHud.State.down = false
+
+--- @author DemiAutomatic
 --- @type {NeedValues|nil}
 --- @description Needs opx77_status published for the live character, nil until ready.
 OpxHud.State.needs = nil

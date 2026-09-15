@@ -20,6 +20,7 @@ It reads `opx77_core` and `opx77_status` and draws. It decides nothing and write
 - A `/hud` command and a rebindable key, F8 by default, so a player can hide it; the choice
   survives a character switch
 - Segmented gauges that read at a glance over a moving scene
+- Off screen while `opx77_medic` has the player down, and back as the player left it on revival
 - Fails quiet: a source that is not running costs a log line, not a broken screen
 - Turns the game's own HUD off at boot, so its health bar and clock are not drawn under this one
 
@@ -62,8 +63,9 @@ F11 voice mode, X stop animation, V push-to-talk, ALT context menu.
 Client exports, all of them returning a table with `ok`.
 
 - `setVisible(value)` -- show (`true`) or hide (`false`) the HUD; answers with the resulting
-  visibility.
-- `isVisible()` -- whether the HUD is up.
+  visibility, and `down`.
+- `isVisible()` -- whether the HUD is up, as chosen, and `down`: whether the player being down
+  keeps it off screen right now.
 - `vanilla()` -- what became of the game's own HUD on this client. Read-only.
 
 For a cutscene or a full-screen menu, hide it and show it again after. Nothing may set the
@@ -99,6 +101,19 @@ raise that name.
 refusal, or an event carrying `ready = false` -- the gauges it owns are left out of the frame
 entirely rather than drawn at zero, and every other block keeps drawing. An empty hunger bar
 is something a player acts on, so it is never shown for a value the HUD does not have.
+
+## While the player is down
+
+`opx77_medic` raises the client-local `opx77:medic:stateChanged` on every change, and this
+resource reads it once at start with its `isDown` export, for a HUD (re)started while the
+player is already down. While down the whole surface, chip strip included, is off screen. A
+`setVisible` or a `/hud` in that time is kept rather than drawn, and the player's own F8
+choice is never touched, so a revival or a give up puts back exactly what they had. Any
+resource can raise that name, so the most it does is hide the HUD or put back what the player
+chose; it never shows one they turned off. `opx77_medic` stopping brings the HUD back.
+
+The game's own HUD needs nothing here: a component `VANILLA` sets to `true` only releases this
+resource's claim, so what `opx77_medic` hides while the player is down stays hidden.
 
 ## The game's own HUD
 
@@ -148,8 +163,8 @@ English.
 
 ## Architecture
 
-Why the code is written the way it is -- load order, the two sources, the frame signature,
-the untrusted status strip, the key, the game's own HUD -- is in
+Why the code is written the way it is -- load order, the two sources, the player being down,
+the frame signature, the untrusted status strip, the key, the game's own HUD -- is in
 [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) (in French). The LuaLS types and the
 signatures of the `OpxHud.*` functions are in `std/` (`std/types.lua` and one stub file per
 script); they are never loaded.

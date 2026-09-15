@@ -1,6 +1,6 @@
 --- @author DemiAutomatic
 --- @file client/main.lua
---- @description The WebUI surface, its frames, and the opx77_core and opx77_status links.
+--- @description The WebUI surface, its frames, and the opx77_core, opx77_status and opx77_medic links.
 
 local Config = OPX_HUD_CONFIG
 
@@ -53,6 +53,11 @@ local NOTIFY = 'opx77_notify'
 
 --- @author DemiAutomatic
 --- @type {string}
+--- @description Resource deciding whether the player is down.
+local MEDIC = 'opx77_medic'
+
+--- @author DemiAutomatic
+--- @type {string}
 --- @description Local event opx77_status raises with the needs.
 local NEEDS_EVENT = 'opx77:status:needs'
 
@@ -60,6 +65,11 @@ local NEEDS_EVENT = 'opx77:status:needs'
 --- @type {string}
 --- @description Local event opx77_status raises with the status chips.
 local EFFECTS_EVENT = 'opx77:status:effects'
+
+--- @author DemiAutomatic
+--- @type {string}
+--- @description Local event opx77_medic raises on every down state change.
+local MEDIC_EVENT = 'opx77:medic:stateChanged'
 
 --- @author DemiAutomatic
 --- @type {table|nil}
@@ -113,7 +123,7 @@ local function draw(force)
 	local signature = State.Signature(view) .. '\2' .. effects.signature
 	if not force and signature == drawn then return end
 	local sent
-	if not State.visible or (view == nil and #effects.chips == 0) then
+	if not State.visible or State.down or (view == nil and #effects.chips == 0) then
 		sent = send('hud:hide', {})
 	else
 		view = view or { rows = {} }
@@ -208,6 +218,31 @@ local function pullNeeds()
 		return
 	end
 	State.SetNeeds(result.values, result.ready == true)
+end
+
+--- @author DemiAutomatic
+--- @type {boolean}
+--- @description Whether a medic state event landed since this resource started.
+local medicHeard = false
+
+--- @author DemiAutomatic
+--- @method setDown
+--- @description Takes the surface off screen while down, and back after.
+--- @param value {boolean}
+local function setDown(value)
+	local down = value == true
+	if State.down == down then return end
+	State.down = down
+	draw(true)
+end
+
+--- @author DemiAutomatic
+--- @method pullDown
+--- @description Reads the down state from opx77_medic once, from a coroutine.
+local function pullDown()
+	local result = call(MEDIC, 'isDown')
+	if result == nil or medicHeard then return end
+	setDown(result.down == true)
 end
 
 --- @author DemiAutomatic
@@ -322,6 +357,16 @@ AddEventHandler(EFFECTS_EVENT, function(payload)
 end)
 
 --- @author DemiAutomatic
+--- @event opx77:medic:stateChanged
+--- @description Hides or restores the surface, never touching the player's choice.
+--- @param payload {MedicStateChanged}
+AddEventHandler(MEDIC_EVENT, function(payload)
+	if type(payload) ~= 'table' then return end
+	medicHeard = true
+	setDown(payload.down == true)
+end)
+
+--- @author DemiAutomatic
 --- @method unload
 --- @description Drops the character and its needs, and redraws.
 local function unload()
@@ -364,7 +409,7 @@ end)
 
 --- @author DemiAutomatic
 --- @method OpxHud.Runtime.SetVisible
---- @description Shows or hides the surface and answers the resulting visibility.
+--- @description Shows or hides the surface, kept off screen while down.
 --- @param value {boolean}
 --- @returns {boolean}
 function OpxHud.Runtime.SetVisible(value)
@@ -432,6 +477,7 @@ AddEventHandler('onClientResourceStart', function(name)
 	end)
 
 	CreateThread(function()
+		pullDown()
 		pullNeeds()
 		pull()
 		draw()
@@ -440,10 +486,11 @@ end)
 
 --- @author DemiAutomatic
 --- @event onClientResourceStop
---- @description Unloads on a core stop, blanks status needs, forgets the page.
+--- @description Unloads on core stop, blanks needs, lifts down, forgets the page.
 --- @param name {string}
 AddEventHandler('onClientResourceStop', function(name)
 	if name == CORE then return unload() end
+	if name == MEDIC then return setDown(false) end
 	if name == STATUS then
 		State.SetNeeds(nil, false)
 		draw()

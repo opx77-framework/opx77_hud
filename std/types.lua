@@ -55,7 +55,14 @@
 
 --- What `setVisible` and `isVisible` answer.
 ---@class HudVisibility : HudResponse
----@field visible boolean
+---@field visible boolean  the player's choice, kept while down
+---@field down boolean     opx77_medic has the player down: nothing is drawn, whatever `visible`
+
+--- The payload of `opx77:medic:stateChanged`, as this resource reads it. Any resource can
+--- raise the name, so it never changes the player's own `visible` choice.
+---@class MedicStateChanged
+---@field down boolean
+---@field waiting boolean
 
 --- What `vanilla` answers. Read-only: nothing may set the game's own HUD through an export.
 ---@class HudVanilla : HudResponse

@@ -10,6 +10,11 @@ OpxHud.State.data = nil
 ---@type boolean
 OpxHud.State.visible = true
 
+--- Whether opx77_medic has the player down. Kept apart from `visible`, the player's own choice:
+--- while down nothing is drawn whatever `visible` says, and a revival puts back what they had.
+---@type boolean
+OpxHud.State.down = false
+
 --- The needs opx77_status last published for the live character, or nil while it has not
 --- answered with `ready = true`: the gauges it owns then leave the frame instead of reading zero.
 ---@type NeedValues|nil
