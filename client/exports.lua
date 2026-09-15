@@ -8,26 +8,26 @@ local Vanilla = OpxHud.vanilla
 ---@param values table|nil
 ---@return table
 local function response(ok, values)
-  values = values or {}
-  values.ok = ok == true
-  return values
+	values = values or {}
+	values.ok = ok == true
+	return values
 end
 
 --- Shows or hides the HUD.
 ---@param value boolean
 ---@return HudVisibility
-exports("setVisible", function(value)
-  return response(true, { visible = Runtime.setVisible(value) })
+exports('setVisible', function(value)
+	return response(true, { visible = Runtime.setVisible(value) })
 end)
 
 --- Whether the HUD is up.
 ---@return HudVisibility
-exports("isVisible", function()
-  return response(true, { visible = Runtime.isVisible() })
+exports('isVisible', function()
+	return response(true, { visible = Runtime.isVisible() })
 end)
 
 --- What became of the game's own HUD on this client. Read-only.
 ---@return HudVanilla
-exports("vanilla", function()
-  return response(true, Vanilla.snapshot())
+exports('vanilla', function()
+	return response(true, Vanilla.snapshot())
 end)
