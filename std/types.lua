@@ -55,6 +55,7 @@
 ---@class HudVitals
 ---@field health number  percent of the reported maximum, 0 upwards
 ---@field armor number   points, 0 upwards
+---@field stamina number|nil  percent of the game's stamina pool, nil when the snapshot has none
 
 --- The state the microphone indicator is drawn in.
 ---@alias HudVoiceState
