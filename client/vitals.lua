@@ -1,6 +1,6 @@
 --- @author DemiAutomatic
 --- @file client/vitals.lua
---- @description Reads live health and armour from the game, not from the saved character.
+--- @description Reads live health, stamina and armour from the game, not from the saved character.
 
 OpxHud.Vitals = {}
 
@@ -19,25 +19,40 @@ local function firstFinite(first, second)
 end
 
 --- @author DemiAutomatic
+--- @method share
+--- @description A pool as a percent of its maximum: a pool table, or a flat value beside its maximum.
+--- @param pool {any} A table with value/current and maximum/max, or a number.
+--- @param flatMaximum {any} The maximum when the pool is a number.
+--- @returns {number|nil}
+local function share(pool, flatMaximum)
+	local value, maximum
+	if type(pool) == 'table' then
+		value = firstFinite(pool.value, pool.current)
+		maximum = firstFinite(pool.maximum, pool.max)
+		if value == nil and finite(pool.fraction) then return math.max(0, pool.fraction) * 100 end
+	elseif finite(pool) then
+		value, maximum = pool, flatMaximum
+	end
+	if value == nil then return nil end
+	if not finite(maximum) or maximum <= 0 then maximum = 100 end
+	return math.max(0, value) / maximum * 100
+end
+
+--- @author DemiAutomatic
 --- @method OpxHud.Vitals.Sample
---- @description Reads Open77.stats once: health as a percent of its maximum, armour in points.
+--- @description Reads Open77.stats once: health and stamina as percents of their maximums, armour in points.
 --- @returns {HudVitals|nil, string|nil}
 function OpxHud.Vitals.Sample()
 	local stats = Open77.stats
 	if type(stats) ~= 'table' or type(stats.get) ~= 'function' then return nil, 'api_absent' end
 	local read, state = pcall(stats.get)
 	if not read then return nil, tostring(state) end
-	if type(state) ~= 'table' or type(state.health) ~= 'table' then return nil, nil end
+	if type(state) ~= 'table' then return nil, nil end
 
-	local health = state.health
-	local value = firstFinite(health.value, health.current)
-	if value == nil then return nil, nil end
-	local maximum = firstFinite(health.maximum, health.max)
-	if maximum == nil or maximum <= 0 then maximum = 100 end
-	if value < 0 then value = 0 end
-
-	local armor = finite(state.armor) and state.armor or 0
-	if armor < 0 then armor = 0 end
-
-	return { health = value / maximum * 100, armor = armor }, nil
+	-- The client documents pool tables and the server flat numbers; either shape is read.
+	local health = share(state.health, state.maxHealth)
+	if health == nil then return nil, nil end
+	local armor = finite(state.armor) and math.max(0, state.armor) or 0
+	return { health = health, armor = armor, stamina = share(state.stamina, state.maxStamina) }, nil
 end
+

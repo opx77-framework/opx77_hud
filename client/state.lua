@@ -163,11 +163,12 @@ end
 
 --- @author DemiAutomatic
 --- @method buildCyber
---- @description Appends the stamina gauge once opx77_status has answered.
+--- @description Appends the stamina gauge: the game's live pool, opx77_status's stamina without one.
 --- @param _ {PlayerData}
 --- @param rows {HudRow[]}
 local function buildCyber(_, rows)
-	local raw = need('stamina')
+	local live = State.vitals and State.vitals.stamina or nil
+	local raw = finite(live) and live or need('stamina')
 	if raw == nil then return end
 	local value = percent(raw)
 	if THRESHOLD == nil or value <= THRESHOLD then
