@@ -4,15 +4,15 @@
 
 OpxHud = OpxHud or {}
 
-local Keys = {}
-OpxHud.keys = Keys
+OpxHud.Keys = {}
+local Keys = OpxHud.Keys
 
 --- A configured key: a key name, or false for none. Anything else is the default, said once.
 ---@param path string  how the warning names it, e.g. "KEYS.TOGGLE"
 ---@param value any
 ---@param default string
 ---@return string|false
-function Keys.setting(path, value, default)
+function OpxHud.Keys.Setting(path, value, default)
 	if value == false then return false end
 	if value == nil then return default end
 	if type(value) == 'string' and #value > 0 and #value <= 32 and not value:find('[%s%c]') then
@@ -38,7 +38,7 @@ end
 ---@param key string|false
 ---@param onPressed fun()
 ---@return boolean registered
-function Keys.register(id, nameKey, key, onPressed)
+function OpxHud.Keys.Register(id, nameKey, key, onPressed)
 	if key == false then return false end
 	if type(RegisterKeyMapping) ~= 'function' then
 		Open77.log.warn(('key mapping %s not registered: this client build has no ' ..

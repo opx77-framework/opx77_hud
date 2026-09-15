@@ -1,8 +1,8 @@
 --- The public export surface: control of the rectangle, not of the character drawn in it.
 --- Every call answers a table carrying `ok` and never raises; the shapes are in types.lua.
 
-local Runtime = OpxHud.runtime
-local Vanilla = OpxHud.vanilla
+local Runtime = OpxHud.Runtime
+local Vanilla = OpxHud.Vanilla
 
 ---@param ok boolean
 ---@param values table|nil
@@ -17,17 +17,17 @@ end
 ---@param value boolean
 ---@return HudVisibility
 exports('setVisible', function(value)
-	return response(true, { visible = Runtime.setVisible(value) })
+	return response(true, { visible = Runtime.SetVisible(value) })
 end)
 
 --- Whether the HUD is up.
 ---@return HudVisibility
 exports('isVisible', function()
-	return response(true, { visible = Runtime.isVisible() })
+	return response(true, { visible = Runtime.IsVisible() })
 end)
 
 --- What became of the game's own HUD on this client. Read-only.
 ---@return HudVanilla
 exports('vanilla', function()
-	return response(true, Vanilla.snapshot())
+	return response(true, Vanilla.Snapshot())
 end)

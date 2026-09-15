@@ -11,16 +11,16 @@ local GAUGE_SEGMENTS = 10
 local SURFACE_WIDTH = 1920
 local SURFACE_HEIGHT = 1080
 
-local State = OpxHud.state
-local finite = State.finite
-local Keys = OpxHud.keys
+local State = OpxHud.State
+local finite = State.Finite
+local Keys = OpxHud.Keys
 
 --- The mapping that shows and hides the HUD. The id is stable: a player's rebind is stored
 --- under it.
 local KEY_TOGGLE = 'opx77_hud.toggle'
 
-local Runtime = {}
-OpxHud.runtime = Runtime
+OpxHud.Runtime = {}
+local Runtime = OpxHud.Runtime
 
 local RESOURCE = GetCurrentResourceName()
 local CORE = 'opx77_core'
@@ -69,9 +69,9 @@ local effects = { chips = {}, hidden = 0, signature = '' }
 ---@param force boolean|nil skip the signature test, for a page whose DOM is new
 local function draw(force)
 	if page == nil or not pageReady then return end
-	local view = State.view()
+	local view = State.View()
 	-- the effects join the signature: a chip appearing is a repaint even when no gauge moved
-	local signature = State.signature(view) .. '\2' .. effects.signature
+	local signature = State.Signature(view) .. '\2' .. effects.signature
 	if not force and signature == drawn then return end
 	local sent
 	-- the whole surface is one element's `open` class, chip strip included, so hiding is
@@ -127,7 +127,7 @@ end
 --- a chat line otherwise. Best-effort, never a dependency.
 ---@param kind "info"|"success"|"warning"|"error"
 ---@param message string
-function Runtime.notify(kind, message)
+function OpxHud.Runtime.Notify(kind, message)
 	if Config.NOTIFY == false then return chatLine(kind, message) end
 	CreateThread(function()
 		local _, failure = call(NOTIFY, 'show', {
@@ -169,10 +169,10 @@ local function pullNeeds()
 	local result, _, answered = call(STATUS, 'getNeeds')
 	if result == nil then
 		-- a refusal is authoritative: no character, or the status server has not answered yet
-		if answered then State.setNeeds(nil, false) end
+		if answered then State.SetNeeds(nil, false) end
 		return false
 	end
-	State.setNeeds(result.values, result.ready == true)
+	State.SetNeeds(result.values, result.ready == true)
 	return true
 end
 
@@ -191,7 +191,7 @@ end)
 --- The needs opx77_status owns. It pushes; nothing here polls them.
 AddEventHandler(NEEDS_EVENT, function(payload)
 	if type(payload) ~= 'table' then return end
-	State.setNeeds(payload.values, payload.ready == true)
+	State.SetNeeds(payload.values, payload.ready == true)
 	draw()
 end)
 
@@ -273,7 +273,7 @@ end)
 
 AddEventHandler('opx77:client:onPlayerUnloaded', function()
 	State.data = nil
-	State.setNeeds(nil, false)
+	State.SetNeeds(nil, false)
 	draw()
 end)
 
@@ -281,11 +281,11 @@ end)
 ---@param mode string "show" | "hide" | "toggle"
 RegisterNetEvent('opx77_hud:visibility', function(mode)
 	if mode == 'show' then
-		Runtime.setVisible(true)
+		Runtime.SetVisible(true)
 	elseif mode == 'hide' then
-		Runtime.setVisible(false)
+		Runtime.SetVisible(false)
 	elseif mode == 'toggle' then
-		Runtime.setVisible(not State.visible)
+		Runtime.SetVisible(not State.visible)
 	end
 end)
 
@@ -297,13 +297,13 @@ RegisterNetEvent('opx77_hud:notice', function(kind, message)
 	if kind ~= 'info' and kind ~= 'success' and kind ~= 'warning' and kind ~= 'error' then
 		kind = 'info'
 	end
-	Runtime.notify(kind, message)
+	Runtime.Notify(kind, message)
 end)
 
 --- Shows or hides the HUD.
 ---@param value boolean
 ---@return boolean visible
-function Runtime.setVisible(value)
+function OpxHud.Runtime.SetVisible(value)
 	local wanted = value ~= false
 	if State.visible == wanted then return State.visible end
 	State.visible = wanted
@@ -314,7 +314,7 @@ end
 
 --- Whether the HUD is up.
 ---@return boolean visible
-function Runtime.isVisible()
+function OpxHud.Runtime.IsVisible()
 	return State.visible
 end
 
@@ -328,8 +328,8 @@ AddEventHandler('onClientResourceStart', function(name)
 		keys = nil
 	end
 	keys = keys or {}
-	Keys.register(KEY_TOGGLE, 'hud.key.toggle', Keys.setting('KEYS.TOGGLE', keys.TOGGLE, 'F8'),
-		function() Runtime.setVisible(not State.visible) end)
+	Keys.Register(KEY_TOGGLE, 'hud.key.toggle', Keys.Setting('KEYS.TOGGLE', keys.TOGGLE, 'F8'),
+		function() Runtime.SetVisible(not State.visible) end)
 end)
 
 AddEventHandler('onClientResourceStart', function(name)
@@ -379,7 +379,7 @@ AddEventHandler('onClientResourceStop', function(name)
 	-- opx77_status takes its chip strip down on the way out but raises no farewell for the
 	-- needs, so the gauges it owns leave the frame here rather than staying at their last value
 	if name == STATUS then
-		State.setNeeds(nil, false)
+		State.SetNeeds(nil, false)
 		draw()
 		return
 	end

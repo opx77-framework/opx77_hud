@@ -4,30 +4,30 @@ OpxHud = OpxHud or {}
 
 local Config = OPX_HUD_CONFIG
 
-local State = {}
-OpxHud.state = State
+OpxHud.State = {}
+local State = OpxHud.State
 
 --- The last snapshot opx77_core gave us, or nil when no character is loaded.
 ---@type table|nil
-State.data = nil
+OpxHud.State.data = nil
 
 --- Whether anything is drawn at all; the character being absent is separate.
 ---@type boolean
-State.visible = true
+OpxHud.State.visible = true
 
 --- The needs opx77_status last published, or nil while it has none for this character.
 ---@type table|nil
-State.needs = nil
+OpxHud.State.needs = nil
 
 --- Whether opx77_status has answered for the live character. False blanks the gauges it
 --- owns instead of drawing them at zero.
 ---@type boolean
-State.needsReady = false
+OpxHud.State.needsReady = false
 
 --- Adopt what opx77_status published. A refusal or `ready = false` clears the values.
 ---@param values table|nil
 ---@param ready boolean
-function State.setNeeds(values, ready)
+function OpxHud.State.SetNeeds(values, ready)
 	State.needsReady = ready == true and type(values) == 'table'
 	State.needs = State.needsReady and values or nil
 end
@@ -35,13 +35,13 @@ end
 --- A number, not NaN, and neither infinity.
 ---@param value any
 ---@return boolean
-function State.finite(value)
+function OpxHud.State.Finite(value)
 	-- `value == value` is the NaN check: NaN is the one value unequal to itself
 	return type(value) == 'number' and value == value
 		and value > -math.huge and value < math.huge
 end
 
-local finite = State.finite
+local finite = State.Finite
 
 --- One need opx77_status owns, or nil while it has not answered for this character.
 ---@param key string
@@ -90,13 +90,10 @@ local BLOCKS = type(Config.BLOCKS) == 'table' and Config.BLOCKS or {}
 --- that is not a number reads as `false`: a comparison against it would raise, not refuse.
 local THRESHOLD = finite(Config.NEEDS_THRESHOLD) and Config.NEEDS_THRESHOLD or nil
 
---- One builder per name in `Config.BLOCKS`, each appending rows or nothing.
-local blocks = {}
-
 --- Health, and armour when the character has any.
 ---@param data table
 ---@param rows table
-function blocks.vitals(data, rows)
+local function buildVitals(data, rows)
 	local metadata = data.metadata or {}
 	local health = percent(metadata.health)
 	rows[#rows + 1] = { kind = 'bar', id = 'health', icon = 'health', pct = health,
@@ -115,7 +112,7 @@ local NEED_GAUGES = { 'hunger', 'thirst' }
 --- not answered.
 ---@param _ table
 ---@param rows table
-function blocks.needs(_, rows)
+local function buildNeeds(_, rows)
 	for index = 1, #NEED_GAUGES do
 		local key = NEED_GAUGES[index]
 		local raw = need(key)
@@ -132,7 +129,7 @@ end
 --- Stamina, from opx77_status, drawn only once it has answered.
 ---@param _ table
 ---@param rows table
-function blocks.cyber(_, rows)
+local function buildCyber(_, rows)
 	local raw = need('stamina')
 	if raw == nil then return end
 	local value = percent(raw)
@@ -152,7 +149,7 @@ for index = 1, #KNOWN_MONEY do KNOWN_SET[KNOWN_MONEY[index]] = true end
 --- Every money type the character holds, KNOWN_MONEY first.
 ---@param data table
 ---@param rows table
-function blocks.money(data, rows)
+local function buildMoney(data, rows)
 	local purse = data.money or {}
 	-- allocated only for an operator who configured a money type beyond KNOWN_MONEY, and
 	-- strings only: `table.sort` on mixed key types raises
@@ -179,7 +176,7 @@ end
 --- The job line from opx77_core, and street cred from opx77_status.
 ---@param data table
 ---@param rows table
-function blocks.identity(data, rows)
+local function buildIdentity(data, rows)
 	local job = data.job
 	if type(job) == 'table' and job.label then
 		local grade = type(job.grade) == 'table' and job.grade.name or nil
@@ -195,9 +192,18 @@ function blocks.identity(data, rows)
 	end
 end
 
+--- One builder per name in `Config.BLOCKS`, each appending rows or nothing.
+local blocks = {
+	vitals = buildVitals,
+	cyber = buildCyber,
+	needs = buildNeeds,
+	money = buildMoney,
+	identity = buildIdentity,
+}
+
 --- Everything the page draws, or nil when there is no character to draw for.
 ---@return table|nil
-function State.view()
+function OpxHud.State.View()
 	if not State.visible or State.data == nil then return nil end
 	local rows = {}
 	for index = 1, #BLOCKS do
@@ -211,7 +217,7 @@ end
 --- No view answers "\0": a rowless character and no character at all are different frames.
 ---@param view table|nil
 ---@return string
-function State.signature(view)
+function OpxHud.State.Signature(view)
 	if view == nil then return '\0' end
 	local rows = view.rows
 	-- one flat list joined once: six fields per row, so the row count is read back from the

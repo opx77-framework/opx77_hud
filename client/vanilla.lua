@@ -4,8 +4,8 @@ OpxHud = OpxHud or {}
 
 local Config = OPX_HUD_CONFIG
 
-local Vanilla = {}
-OpxHud.vanilla = Vanilla
+OpxHud.Vanilla = {}
+local Vanilla = OpxHud.Vanilla
 
 local RESOURCE = GetCurrentResourceName()
 
@@ -55,7 +55,7 @@ end
 --- Apply `Config.VANILLA`. Safe to call repeatedly; the record of what was found is kept once.
 ---@return integer applied
 ---@return string|nil reason when nothing could be applied at all
-function Vanilla.apply()
+function OpxHud.Vanilla.Apply()
 	local wanted = Config.VANILLA
 	if wanted == false or wanted == nil then return 0 end
 	if type(wanted) ~= 'table' then return 0, 'config_not_a_table' end
@@ -90,7 +90,7 @@ end
 
 --- Put back what was found. Only components whose prior visibility the client reported.
 ---@return integer restored
-function Vanilla.restore()
+function OpxHud.Vanilla.Restore()
 	if found == nil then return 0 end
 
 	local hud = api()
@@ -109,7 +109,7 @@ end
 
 --- What this file did, for anyone debugging a HUD that will not go away.
 ---@return table
-function Vanilla.snapshot()
+function OpxHud.Vanilla.Snapshot()
 	local hud = api()
 	local live = nil
 	if hud ~= nil and type(hud.state) == 'function' then
@@ -122,7 +122,7 @@ end
 AddEventHandler('onClientResourceStart', function(name)
 	if name ~= RESOURCE then return end
 
-	local applied, reason = Vanilla.apply()
+	local applied, reason = Vanilla.Apply()
 	if reason == 'config_not_a_table' then
 		Open77.log.warn('vanilla: VANILLA in config.lua is neither a table nor false, so the')
 		Open77.log.warn("  game's own HUD was left exactly as it was.")
@@ -138,10 +138,10 @@ end)
 
 -- the game brings its own HUD back at incarnation, which lands after this resource started
 AddEventHandler('opx77:client:onPlayerLoaded', function()
-	Vanilla.apply()
+	Vanilla.Apply()
 end)
 
 AddEventHandler('onClientResourceStop', function(name)
 	if name ~= RESOURCE then return end
-	Vanilla.restore()
+	Vanilla.Restore()
 end)
