@@ -1,4 +1,6 @@
---- The game's own HUD, hidden through `Open77.hud` so it is not drawn under this one.
+--- @author DemiAutomatic
+--- @file client/vanilla.lua
+--- @description Hides the game's own HUD components and restores them on stop.
 
 OpxHud = OpxHud or {}
 
@@ -7,14 +9,20 @@ local Config = OPX_HUD_CONFIG
 OpxHud.Vanilla = {}
 local Vanilla = OpxHud.Vanilla
 
+--- @author DemiAutomatic
+--- @type {string}
+--- @description This resource's own name, for its lifecycle events.
 local RESOURCE = GetCurrentResourceName()
 
---- Component -> the visibility it had before this file touched it; nil until `apply` has run.
----@type table<string, boolean>|nil
+--- @author DemiAutomatic
+--- @type {table<string, boolean>|nil}
+--- @description Visibility each component had before the first apply.
 local found = nil
 
---- `Open77.hud`, resolved on each entry: this file loads before the session is up.
----@return table|nil
+--- @author DemiAutomatic
+--- @method api
+--- @description Answers Open77.hud when it can set visibility, else nil.
+--- @returns {table|nil}
 local function api()
 	if type(Open77) ~= 'table' then return nil end
 	local hud = Open77.hud
@@ -23,10 +31,11 @@ local function api()
 	return hud
 end
 
---- The component names this client recognises, or nil when it will not say and nothing
---- is validated.
----@param hud table
----@return table<string, boolean>|nil
+--- @author DemiAutomatic
+--- @method known
+--- @description Answers the component names this client reports, or nil.
+--- @param hud {table}
+--- @returns {table<string, boolean>|nil}
 local function known(hud)
 	if type(hud.components) ~= 'function' then return nil end
 	local ok, list = pcall(hud.components)
@@ -36,15 +45,16 @@ local function known(hud)
 		local name = list[index]
 		if type(name) == 'string' then set[name] = true end
 	end
-	-- an empty answer is not a claim that there are no components; treat it as no answer
 	if next(set) == nil then return nil end
 	return set
 end
 
---- The visibility a component has right now, or nil when the client will not say.
----@param hud table
----@param component string
----@return boolean|nil
+--- @author DemiAutomatic
+--- @method visibility
+--- @description Answers a component's current visibility, or nil when unreported.
+--- @param hud {table}
+--- @param component {string}
+--- @returns {boolean|nil}
 local function visibility(hud, component)
 	if type(hud.isVisible) ~= 'function' then return nil end
 	local ok, value = pcall(hud.isVisible, component)
@@ -52,9 +62,10 @@ local function visibility(hud, component)
 	return value
 end
 
---- Apply `Config.VANILLA`. Safe to call repeatedly; the record of what was found is kept once.
----@return integer applied
----@return string|nil reason when nothing could be applied at all
+--- @author DemiAutomatic
+--- @method OpxHud.Vanilla.Apply
+--- @description Applies the VANILLA config, recording prior visibility once.
+--- @returns {integer, string|nil}
 function OpxHud.Vanilla.Apply()
 	local wanted = Config.VANILLA
 	if wanted == false or wanted == nil then return 0 end
@@ -88,8 +99,10 @@ function OpxHud.Vanilla.Apply()
 	return applied
 end
 
---- Put back what was found. Only components whose prior visibility the client reported.
----@return integer restored
+--- @author DemiAutomatic
+--- @method OpxHud.Vanilla.Restore
+--- @description Puts back each component's recorded visibility and forgets it.
+--- @returns {integer}
 function OpxHud.Vanilla.Restore()
 	if found == nil then return 0 end
 
@@ -107,8 +120,10 @@ function OpxHud.Vanilla.Restore()
 	return restored
 end
 
---- What this file did, for anyone debugging a HUD that will not go away.
----@return table
+--- @author DemiAutomatic
+--- @method OpxHud.Vanilla.Snapshot
+--- @description Reports what became of the game's own HUD.
+--- @returns {HudVanilla}
 function OpxHud.Vanilla.Snapshot()
 	local hud = api()
 	local live = nil
@@ -119,6 +134,10 @@ function OpxHud.Vanilla.Snapshot()
 	return { available = hud ~= nil, found = found, state = live }
 end
 
+--- @author DemiAutomatic
+--- @event onClientResourceStart
+--- @description Hides the configured game HUD components and logs the outcome.
+--- @param name {string}
 AddEventHandler('onClientResourceStart', function(name)
 	if name ~= RESOURCE then return end
 
@@ -136,11 +155,17 @@ AddEventHandler('onClientResourceStart', function(name)
 	end
 end)
 
--- the game brings its own HUD back at incarnation, which lands after this resource started
+--- @author DemiAutomatic
+--- @event opx77:client:onPlayerLoaded
+--- @description Hides the game HUD again after the character incarnates.
 AddEventHandler('opx77:client:onPlayerLoaded', function()
 	Vanilla.Apply()
 end)
 
+--- @author DemiAutomatic
+--- @event onClientResourceStop
+--- @description Restores the game HUD when this resource stops.
+--- @param name {string}
 AddEventHandler('onClientResourceStop', function(name)
 	if name ~= RESOURCE then return end
 	Vanilla.Restore()

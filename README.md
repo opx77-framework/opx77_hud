@@ -129,10 +129,12 @@ you tell those apart.
 - `COMMAND` -- the chat command, or `false` for none. See **Commands** above.
 - `NOTIFY` -- the command's refusal as an `opx77_notify` toast (`true`, the default), or
   `false` for a chat line. See **Commands** above.
-- `KEYS.TOGGLE` -- the show/hide key's default, or `false` for none. See **Keys** above.
+- `KEYS.TOGGLE` -- the show/hide key's default, which each player can rebind in the pause menu,
+  or `false` to register no mapping. See **Keys** above.
 - `VANILLA` -- the game's own HUD, component by component: `false` hides it, `true` puts it
   back, a removed line leaves that component alone, and `VANILLA = false` leaves the whole
-  thing alone.
+  thing alone. The shipped lines are `minimap`, `compass`, `clock`, `health`, `stamina`,
+  `weapon` (the weapon and its ammunition count, together) and `speedometer`.
 
 ## Locales
 
@@ -140,6 +142,14 @@ you tell those apart.
 `config.lua`. A missing key falls back to `en` and then to the key itself. The catalogue is a
 `shared_script` because the `/hud` command is registered server-side. `Open77.log` lines stay
 English.
+
+## Architecture
+
+Why the code is written the way it is -- load order, the two sources, the frame signature,
+the untrusted status strip, the key, the game's own HUD -- is in
+[`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) (in French). The LuaLS types and the
+signatures of the `OpxHud.*` functions are in `std/` (`std/types.lua` and one stub file per
+script); they are never loaded.
 
 ## Community & Support
 

@@ -1,3 +1,7 @@
+--- @author DemiAutomatic
+--- @file locales/en.lua
+--- @description English player-facing text for the HUD resource.
+
 OpxHud.Locale.register('en', {
 	['hud.title'] = 'HUD',
 	['hud.usage'] = 'usage: {command} [on|off]',

@@ -1,7 +1,12 @@
---- The server half: the chat command, which cannot be registered client-side.
+--- @author DemiAutomatic
+--- @file server/main.lua
+--- @description The server half: the show and hide chat command and its suggestion.
 
 local Config = OPX_HUD_CONFIG
 
+--- @author DemiAutomatic
+--- @type {string|false}
+--- @description The configured command name, or false for none.
 local name = Config.COMMAND
 
 if type(name) ~= 'string' or name == '' then
@@ -9,16 +14,20 @@ if type(name) ~= 'string' or name == '' then
 	return
 end
 
---- The scheduler clock in milliseconds; `monotonic` answers SECONDS. A non-finite reading is
---- dropped rather than propagated: a NaN would expire nothing, an infinity everything.
----
---- Holding the last reading is not a safe degradation: `lastSuggestedMs` is compared against
---- this clock, so a frozen one makes `atMs - previous` zero for anyone already suggested to,
---- which is below the floor -- no player would ever be sent the suggestion again, for the
---- rest of the process. `GetGameTimer` is the same scheduler clock, already in milliseconds.
----@return integer
+--- @author DemiAutomatic
+--- @type {integer}
+--- @description Last finite clock reading in milliseconds.
 local lastMs = 0
+
+--- @author DemiAutomatic
+--- @type {boolean}
+--- @description Whether the clock fallback has already been logged.
 local clockWarned = false
+
+--- @author DemiAutomatic
+--- @method nowMs
+--- @description Scheduler milliseconds, falling back to GetGameTimer on a bad reading.
+--- @returns {integer}
 local function nowMs()
 	local read, seconds = pcall(Open77.time.monotonic)
 	if read and type(seconds) == 'number' and seconds == seconds and
@@ -37,8 +46,12 @@ local function nowMs()
 	return lastMs
 end
 
---- `/<COMMAND> [on|off]`, omit the argument to toggle; answers the player who typed it.
---- Registered open: hiding your own HUD is not an operator action.
+--- @author DemiAutomatic
+--- @command OPX_HUD_CONFIG.COMMAND
+--- @description Resolves on, off or toggle and sends it to the caller.
+--- @param source {integer|string}
+--- @param args {string[]|nil}
+--- @param rawCommand {string}
 RegisterCommand(name, function(source, args, rawCommand)
 	local player = tonumber(source) or 0
 	if player <= 0 then
@@ -55,7 +68,6 @@ RegisterCommand(name, function(source, args, rawCommand)
 		elseif wanted == 'off' or wanted == 'hide' then
 			mode = 'hide'
 		else
-			-- a toast the client half raises, not a chat line: the chat is for what players say
 			TriggerClientEvent('opx77_hud:notice', player, 'warning',
 				locale('hud.usage', { command = '/' .. name }))
 			return
@@ -65,12 +77,19 @@ RegisterCommand(name, function(source, args, rawCommand)
 	TriggerClientEvent('opx77_hud:visibility', player, mode)
 end, false)
 
---- player -> when the suggestion was last sent them.
+--- @author DemiAutomatic
+--- @type {table<integer, integer>}
+--- @description When the suggestion was last sent, per player.
 local lastSuggestedMs = {}
 
---- `chat:ready` is a net event and free for a client to send, so it is floored.
+--- @author DemiAutomatic
+--- @type {integer}
+--- @description Milliseconds before one player is sent the suggestion again.
 local SUGGEST_RATE_MS = 10000
 
+--- @author DemiAutomatic
+--- @event chat:ready
+--- @description Sends the command's chat suggestion to a player, rate limited.
 RegisterNetEvent('chat:ready', function()
 	local player = tonumber(source) or 0
 	if player <= 0 then return end
@@ -85,12 +104,10 @@ RegisterNetEvent('chat:ready', function()
 		{ { name = 'on|off', help = locale('hud.commandArgument'), optional = true } })
 end)
 
---- Drop a departed player's rate-limit entry.
----
---- `source` is not populated for a host-fanned event, so the old `tonumber(source)` branch
---- was dead, and the `-1` behind it cleared a slot no player will ever hold. The event also
---- carries a `reason` now; a suggestion throttle has nothing to do with it.
----@param playerId any  a string, like every host event argument
+--- @author DemiAutomatic
+--- @method forget
+--- @description Drops a departed player's suggestion rate limit entry.
+--- @param playerId {string}
 local function forget(playerId)
 	local player = tonumber(playerId)
 	if player == nil then
@@ -100,6 +117,7 @@ local function forget(playerId)
 	lastSuggestedMs[player] = nil
 end
 
--- the departure of an ADMITTED player. A connection refused at the door never reaches here;
--- that is `onPlayerRejected`, which this resource does not listen for.
+--- @author DemiAutomatic
+--- @event onPlayerDisconnected
+--- @description Forgets a departing player's suggestion rate limit.
 AddEventHandler('onPlayerDisconnected', forget)
