@@ -206,8 +206,13 @@ démarrage de cette resource.
 - `known` valide les noms contre `Open77.hud.components()` ; une réponse vide n'est pas l'affirmation
   qu'il n'y a aucun composant, elle vaut absence de réponse, et rien n'est alors validé.
 - `found` garde la visibilité de chaque composant avant le premier `Apply`, une seule fois ;
-  `Apply` peut être rappelé sans l'écraser. `OpxHud.Vanilla.Restore` remet ces valeurs à l'arrêt,
-  seulement pour les composants dont le client a rapporté la visibilité.
+  `Apply` peut être rappelé sans l'écraser. Ce n'est qu'une information, rendue par l'export
+  `vanilla`.
+- Rien n'est remis à l'arrêt. `Open77.hud.setVisible(component, false)` pose une demande de
+  masquage au nom de cette resource, `true` ne retire que la sienne, et la plateforme retire
+  toutes les demandes d'une resource quand elle s'arrête ou se recharge. Remettre à l'arrêt la
+  visibilité trouvée ne faisait donc rien de plus pour un composant trouvé visible, et reposait une
+  demande de masquage pour un composant qu'une autre resource masquait déjà.
 - `OpxHud.Vanilla.Snapshot` est ce que l'export `vanilla` rend, pour qui débogue un HUD qui ne
   veut pas partir.
 
@@ -249,8 +254,9 @@ puces par ton (`--hud-chip-*-line`) et le bleu du type de dégât `shock` (`--hu
 ## Invariants
 
 - **Une surface WebUI par resource**, créée par son propre code, canaux nommés `hud:<action>`.
-- **Une resource qui modifie l'état du joueur le relâche à son arrêt** : le HUD du jeu est remis à
-  l'arrêt, et `reload_policy "reconnect"` couvre le rechargement.
+- **Une resource qui modifie l'état du joueur le relâche à son arrêt** : la plateforme retire les
+  demandes de masquage du HUD du jeu à l'arrêt et au rechargement, et `reload_policy "reconnect"`
+  couvre la surface.
 - **Une resource ne touche pas aux internes d'une autre** : le core et `opx77_status` ne sont lus que
   par leurs exports et leurs events documentés, et chaque appel est vérifié aux trois niveaux.
 - **Un pouvoir se vérifie côté serveur** : il n'y en a pas ici ; la seule commande est ouverte.

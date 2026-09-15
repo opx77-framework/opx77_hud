@@ -1,6 +1,6 @@
 --- @author DemiAutomatic
 --- @file client/vanilla.lua
---- @description Hides the game's own HUD components and restores them on stop.
+--- @description Hides the game's own HUD components this resource replaces.
 
 local Config = OPX_HUD_CONFIG
 
@@ -95,27 +95,6 @@ function OpxHud.Vanilla.Apply()
 end
 
 --- @author DemiAutomatic
---- @method OpxHud.Vanilla.Restore
---- @description Puts back each component's recorded visibility and forgets it.
---- @returns {integer}
-function OpxHud.Vanilla.Restore()
-	if found == nil then return 0 end
-
-	local hud = api()
-	if hud == nil then return 0 end
-
-	local restored = 0
-	for component, visible in pairs(found) do
-		if type(visible) == 'boolean' and pcall(hud.setVisible, component, visible) then
-			restored = restored + 1
-		end
-	end
-
-	found = nil
-	return restored
-end
-
---- @author DemiAutomatic
 --- @method OpxHud.Vanilla.Snapshot
 --- @description Reports what became of the game's own HUD.
 --- @returns {HudVanilla}
@@ -155,13 +134,4 @@ end)
 --- @description Hides the game HUD again after the character incarnates.
 AddEventHandler('opx77:client:onPlayerLoaded', function()
 	Vanilla.Apply()
-end)
-
---- @author DemiAutomatic
---- @event onClientResourceStop
---- @description Restores the game HUD when this resource stops.
---- @param name {string}
-AddEventHandler('onClientResourceStop', function(name)
-	if name ~= RESOURCE then return end
-	Vanilla.Restore()
 end)

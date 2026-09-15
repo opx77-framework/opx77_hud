@@ -106,8 +106,9 @@ when a character loads, because the game brings its HUD back at incarnation. Thi
 `ui.vanilla.hud` capability, which the manifest declares; it is presentation on the client and
 nothing here is authoritative.
 
-What is restored when this resource stops is whatever each component was found at, not what is
-written in the config, so a component the player's own settings had off stays off. A component
+Each `false` is a hide claim this resource holds; `true` releases only its own claim, so a
+component another resource hides stays hidden. The platform releases every claim of this resource
+when it stops or reloads, so nothing is put back by hand. A component
 name this client does not recognise is a logged warning, and a client whose `Open77.hud`
 predates the API is a logged warning too, never a script error -- `exports("vanilla")` is how
 you tell those apart.
