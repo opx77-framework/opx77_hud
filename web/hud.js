@@ -46,7 +46,9 @@
     "bottom-left": "anchor-bottom-left",
     "bottom-right": "anchor-bottom-right",
     "top-left": "anchor-top-left",
-    "top-right": "anchor-top-right"
+    "top-right": "anchor-top-right",
+    "top-center": "anchor-top-center",
+    "bottom-center": "anchor-bottom-center"
   };
 
   /* Inline SVG: no icon font reaches a page here. `currentColor` carries the tone rules. */
@@ -88,9 +90,7 @@
 
     var voiceCount = Number(payload.voiceSegments);
     if (isFinite(voiceCount) && voiceCount >= 2) voiceCells = cells(voiceMeter, Math.round(voiceCount));
-    var rpmCount = Number(payload.rpmSegments);
-    if (isFinite(rpmCount) && rpmCount >= 2) rpmCells = cells(vehicleRefs.rpm, Math.round(rpmCount));
-    vehicleEl.className = "vehicle " + (ANCHORS[text(payload.vehicleAnchor)] || ANCHORS["bottom-right"]) +
+    vehicleEl.className = "vehicle " + (ANCHORS[text(payload.vehicleAnchor)] || ANCHORS["top-center"]) +
       (vehicleEl.classList.contains("live") ? " live" : "");
   }
 
@@ -172,15 +172,23 @@
     speed: document.getElementById("vehicle-speed"),
     unit: document.getElementById("vehicle-unit"),
     gear: document.getElementById("vehicle-gear"),
-    rpmRow: document.getElementById("vehicle-rpm-row"),
     rpm: document.getElementById("vehicle-rpm"),
-    rpmLabel: document.getElementById("vehicle-rpm-label"),
+    integrityRing: document.getElementById("vehicle-integrity-ring"),
     integrityRow: document.getElementById("vehicle-integrity-row"),
     integrityLabel: document.getElementById("vehicle-integrity-label"),
     integrity: document.getElementById("vehicle-integrity"),
     air: document.getElementById("vehicle-air")
   };
-  var rpmCells = cells(vehicleRefs.rpm, 10);
+  /* Past this share of the outer ring the engine reads as redlining. */
+  var REDLINE = 85;
+  /* Speed that fills the outer ring when the engine speed is not reported. */
+  var DIAL_KPH = 250;
+
+  /* Fills a pathLength-100 ring to a percent. */
+  function ring(path, percent) {
+    var share = Math.max(0, Math.min(100, percent));
+    path.style.strokeDasharray = share + " 100";
+  }
 
   function renderVehicle(payload) {
     payload = payload || {};
@@ -196,16 +204,15 @@
     setText(vehicleRefs.gear, gear);
     vehicleRefs.gear.className = "vehicle-gear" + (gear === "R" ? " reverse" : gear === "N" ? " neutral" : "");
 
-    var hasRpm = typeof payload.rpm === "number";
-    vehicleRefs.rpmRow.hidden = !hasRpm;
-    if (hasRpm) {
-      // rounded up, like the gauges: a turning engine never reads as stopped
-      light(rpmCells, Math.ceil(Math.max(0, Math.min(100, payload.rpm)) / 100 * rpmCells.length));
-      setText(vehicleRefs.rpmLabel, payload.rpmLabel);
-    }
+    var fill = typeof payload.rpm === "number" ? payload.rpm
+      : (Number(payload.speed) || 0) / DIAL_KPH * 100;
+    ring(vehicleRefs.rpm, fill);
+    vehicleRefs.rpm.classList.toggle("redline", typeof payload.rpm === "number" && payload.rpm >= REDLINE);
 
     var hasIntegrity = typeof payload.integrity === "number";
     vehicleRefs.integrityRow.hidden = !hasIntegrity;
+    ring(vehicleRefs.integrityRing, hasIntegrity ? payload.integrity : 0);
+    vehicleRefs.integrityRing.setAttribute("class", "ring-integrity" + (payload.tone ? " " + text(payload.tone) : ""));
     if (hasIntegrity) {
       setText(vehicleRefs.integrityLabel, payload.integrityLabel);
       setText(vehicleRefs.integrity, Math.round(payload.integrity) + "%");

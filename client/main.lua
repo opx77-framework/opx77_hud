@@ -32,11 +32,6 @@ local Voice = OpxHud.Voice
 local TICK_MS = 50
 
 --- @author DemiAutomatic
---- @type {integer}
---- @description Number of segments the vehicle RPM bar is cut into.
-local RPM_SEGMENTS = 10
-
---- @author DemiAutomatic
 --- @type {string}
 --- @description Stable id of the show and hide mapping.
 local KEY_TOGGLE = 'opx77_hud.toggle'
@@ -189,7 +184,6 @@ local function drawLive(force)
 	local signature = Vehicle.Signature(vehicle)
 	if vehicle ~= nil then
 		vehicle.unit = locale('hud.vehicle.unit')
-		vehicle.rpmLabel = locale('hud.vehicle.rpm')
 		vehicle.integrityLabel = locale('hud.vehicle.integrity')
 		vehicle.airborneLabel = locale('hud.vehicle.airborne')
 	end
@@ -562,7 +556,6 @@ AddEventHandler('onClientResourceStart', function(name)
 			segments = GAUGE_SEGMENTS,
 			voiceSegments = Voice.segments,
 			vehicleAnchor = Vehicle.enabled and Config.VEHICLE.ANCHOR or nil,
-			rpmSegments = RPM_SEGMENTS,
 		})
 		if State.data ~= nil then sampleVitals() end
 		draw(true)
