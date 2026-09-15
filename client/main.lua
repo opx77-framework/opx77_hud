@@ -450,10 +450,8 @@ AddEventHandler('onClientResourceStart', function(name)
 	end)
 
 	CreateThread(function()
-		local ok, failure = pcall(pullNeeds)
-		if not ok then Open77.log.error('needs: ' .. tostring(failure)) end
-		ok, failure = pcall(pull)
-		if not ok then Open77.log.error('core: ' .. tostring(failure)) end
+		pullNeeds()
+		pull()
 		draw()
 	end)
 end)

@@ -158,7 +158,10 @@ quoi qu'il se soit passé pendant son initialisation. `hud:config` part une fois
 des handlers et que la console CEF n'atteint pas le log.
 
 Le thread de démarrage lit chaque source une fois, pour un personnage chargé avant cette
-resource ; tout changement ultérieur arrive par un event.
+resource ; tout changement ultérieur arrive par un event. `pullNeeds` et `pull` y sont appelés
+directement, jamais sous un `pcall` : tous deux attendent une promesse, et une coroutine ne cède
+pas la main à travers un `pcall` sur cette plateforme. Ni `GetResourceState`, ni
+`Open77.exports.call`, ni `promise:await()` ne lèvent : un échec est une valeur de retour.
 
 ## Répondre au joueur
 
@@ -251,9 +254,3 @@ puces par ton (`--hud-chip-*-line`) et le bleu du type de dégât `shock` (`--hu
 - **Une resource ne touche pas aux internes d'une autre** : le core et `opx77_status` ne sont lus que
   par leurs exports et leurs events documentés, et chaque appel est vérifié aux trois niveaux.
 - **Un pouvoir se vérifie côté serveur** : il n'y en a pas ici ; la seule commande est ouverte.
-
-## Limites connues
-
-- Le thread de démarrage exécute `pullNeeds` et `pull` sous `pcall`, et tous deux attendent une
-  promesse (`promise:await()` dans `call`). Le reste du framework ne cède jamais la main sous un
-  `pcall` ; seul l'envoi devrait y être.
