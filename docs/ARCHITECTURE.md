@@ -186,7 +186,8 @@ sous lui.
 
 - Deux formes de réponse sont documentées : le guide des touches rend `true, key`, la référence
   d'API la touche seule. Les deux sont un enregistrement ; `false|nil, reason` est un refus, qui
-  coûte une ligne de log, la commande restant disponible.
+  coûte une ligne de log, la commande restant disponible. L'appel est sous `pcall` : un client
+  dépourvu de `RegisterKeyMapping` n'est qu'un refus de plus, sans test de présence préalable.
 - Un appui pendant qu'une autre surface tient le clavier (le composeur du chat, un formulaire
   opx77_input, le menu pause) ne fait rien (`captured`) : une touche tapée dedans ne doit pas agir
   derrière.
