@@ -88,8 +88,8 @@ lieu de rester figées sur leur dernière valeur.
 Une barre de faim vide est une chose sur laquelle un joueur agit. `OpxHud.State.SetNeeds` n'adopte
 les besoins que si `ready == true` et que `values` est une table ; sinon
 `OpxHud.State.needs` reste `nil`, `need` répond `nil`, et les blocs `needs` et `cyber`
-n'ajoutent rien. Une valeur non finie répond aussi `nil`. `OpxHud.State.Finite` fait le test : `value == value` est le test NaN, NaN étant la
-seule valeur différente d'elle-même.
+n'ajoutent rien. Une valeur non finie répond aussi `nil`. `OpxHud.State.Finite` fait le test :
+`value == value` est le test NaN, NaN étant la seule valeur différente d'elle-même.
 
 ## Construire les lignes
 

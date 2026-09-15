@@ -62,24 +62,6 @@ function OpxHud.Locale.Set(code)
 end
 
 --- @author DemiAutomatic
---- @method OpxHud.Locale.Current
---- @description Answers the language code currently selected.
---- @returns {string}
-function OpxHud.Locale.Current()
-	return active
-end
-
---- @author DemiAutomatic
---- @method OpxHud.Locale.Exists
---- @description Whether the active or fallback catalogue defines a key.
---- @param key {string}
---- @returns {boolean}
-function OpxHud.Locale.Exists(key)
-	return (catalogs[active] and catalogs[active][key] ~= nil)
-		or (catalogs[FALLBACK] and catalogs[FALLBACK][key] ~= nil)
-end
-
---- @author DemiAutomatic
 --- @method OpxHud.Locale.Get
 --- @description Answers translated text, falling back to English, then the key.
 --- @param key {string}

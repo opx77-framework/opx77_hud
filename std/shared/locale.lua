@@ -16,15 +16,6 @@ function OpxHud.Locale.register(code, strings) end
 ---@return boolean applied false for anything but a non-empty string
 function OpxHud.Locale.Set(code) end
 
---- The language code currently selected.
----@return string
-function OpxHud.Locale.Current() end
-
---- Whether the active catalogue, or the `en` fallback, defines a key.
----@param key string
----@return boolean
-function OpxHud.Locale.Exists(key) end
-
 --- The translated text with `{name}` placeholders filled. Never nil: a missing translation
 --- falls back to `en` and then to the key itself; a placeholder with no value stays as written.
 ---@param key string
