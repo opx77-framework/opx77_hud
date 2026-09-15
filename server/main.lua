@@ -15,38 +15,6 @@ if type(name) ~= 'string' or name == '' then
 end
 
 --- @author DemiAutomatic
---- @type {integer}
---- @description Last finite clock reading in milliseconds.
-local lastMs = 0
-
---- @author DemiAutomatic
---- @type {boolean}
---- @description Whether the clock fallback has already been logged.
-local clockWarned = false
-
---- @author DemiAutomatic
---- @method nowMs
---- @description Scheduler milliseconds, falling back to GetGameTimer on a bad reading.
---- @returns {integer}
-local function nowMs()
-	local read, seconds = pcall(Open77.time.monotonic)
-	if read and type(seconds) == 'number' and seconds == seconds and
-		seconds >= 0 and seconds < math.huge then
-		lastMs = math.floor(seconds * 1000)
-		return lastMs
-	end
-	local ticked, ms = pcall(GetGameTimer)
-	if ticked and type(ms) == 'number' and ms == ms and ms >= 0 and ms < math.huge then
-		if not clockWarned then
-			clockWarned = true
-			Open77.log.warn('Open77.time.monotonic unreadable; falling back to GetGameTimer')
-		end
-		lastMs = math.floor(ms)
-	end
-	return lastMs
-end
-
---- @author DemiAutomatic
 --- @command OPX_HUD_CONFIG.COMMAND
 --- @description Resolves on, off or toggle and sends it to the caller.
 --- @param source {integer|string}
@@ -94,7 +62,7 @@ RegisterNetEvent('chat:ready', function()
 	local player = tonumber(source) or 0
 	if player <= 0 then return end
 
-	local atMs = nowMs()
+	local atMs = GetGameTimer()
 	local previous = lastSuggestedMs[player]
 	if previous ~= nil and atMs - previous < SUGGEST_RATE_MS then return end
 	lastSuggestedMs[player] = atMs

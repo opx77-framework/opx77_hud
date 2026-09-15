@@ -218,12 +218,11 @@ démarrage de cette resource.
 
 ## Horloge serveur
 
-La limite de débit de la suggestion de chat compare `nowMs` à `lastSuggestedMs`.
-`Open77.time.monotonic` répond en **secondes** ; une lecture non finie est écartée plutôt que
-propagée. Garder la dernière lecture ne serait pas une dégradation sûre : une horloge figée rendrait
-`atMs - previous` nul pour tout joueur déjà servi, sous le plancher, et plus aucun joueur ne
-recevrait la suggestion jusqu'à la fin du processus. `nowMs` retombe donc sur `GetGameTimer`, la
-même horloge du planificateur, déjà en millisecondes, et le dit une fois.
+La limite de débit de la suggestion de chat compare `GetGameTimer()` à `lastSuggestedMs` :
+l'horloge monotone du planificateur serveur, documentée en millisecondes, lue directement. Aucune
+lecture précédente n'est gardée en repli : figée, une telle valeur rendrait `atMs - previous` nul
+pour tout joueur déjà servi, sous le plancher, et plus aucun joueur ne recevrait la suggestion
+jusqu'à la fin du processus.
 
 `chat:ready` est un net event qu'un client peut envoyer librement, d'où le plancher
 `SUGGEST_RATE_MS` (10 s) par joueur. `forget` retire l'entrée d'un joueur parti :
