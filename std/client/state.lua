@@ -10,14 +10,10 @@ OpxHud.State.data = nil
 ---@type boolean
 OpxHud.State.visible = true
 
---- The needs opx77_status last published, or nil while it has none for this character.
+--- The needs opx77_status last published for the live character, or nil while it has not
+--- answered with `ready = true`: the gauges it owns then leave the frame instead of reading zero.
 ---@type NeedValues|nil
 OpxHud.State.needs = nil
-
---- Whether opx77_status has answered for the live character. False leaves the gauges it
---- owns out of the frame instead of drawing them at zero.
----@type boolean
-OpxHud.State.needsReady = false
 
 --- Adopts what opx77_status published. Anything but `ready == true` with a table clears them.
 ---@param values NeedValues|nil

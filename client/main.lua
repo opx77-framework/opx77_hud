@@ -89,19 +89,6 @@ local function send(name, payload)
 end
 
 --- @author DemiAutomatic
---- @method sendConfig
---- @description Sends placement and segment count to a ready page.
-local function sendConfig()
-	if page == nil or not pageReady then return end
-	send('hud:config', {
-		anchor = Config.ANCHOR,
-		infoAnchor = Config.INFO_ANCHOR,
-		width = Config.WIDTH,
-		segments = GAUGE_SEGMENTS,
-	})
-end
-
---- @author DemiAutomatic
 --- @type {integer}
 --- @description Most chips kept from one effects payload.
 local MAX_CHIPS = 12
@@ -177,11 +164,11 @@ local function chatLine(kind, message)
 end
 
 --- @author DemiAutomatic
---- @method OpxHud.Runtime.Notify
+--- @method notify
 --- @description Tells the player something by toast, or by chat line otherwise.
 --- @param kind {string} info, success, warning or error.
 --- @param message {string}
-function OpxHud.Runtime.Notify(kind, message)
+local function notify(kind, message)
 	if Config.NOTIFY == false then return chatLine(kind, message) end
 	CreateThread(function()
 		local _, failure = call(NOTIFY, 'show', {
@@ -204,29 +191,25 @@ end
 --- @author DemiAutomatic
 --- @method pull
 --- @description Reads the character snapshot from opx77_core once, from a coroutine.
---- @returns {boolean}
 local function pull()
 	local result, _, answered = call(CORE, 'GetPlayerData')
 	if result == nil then
 		if answered then State.data = nil end
-		return false
+		return
 	end
 	State.data = result.data
-	return true
 end
 
 --- @author DemiAutomatic
 --- @method pullNeeds
 --- @description Reads the needs from opx77_status once, from a coroutine.
---- @returns {boolean}
 local function pullNeeds()
 	local result, _, answered = call(STATUS, 'getNeeds')
 	if result == nil then
 		if answered then State.SetNeeds(nil, false) end
-		return false
+		return
 	end
 	State.SetNeeds(result.values, result.ready == true)
-	return true
 end
 
 --- @author DemiAutomatic
@@ -373,7 +356,7 @@ RegisterNetEvent('opx77_hud:notice', function(kind, message)
 	if kind ~= 'info' and kind ~= 'success' and kind ~= 'warning' and kind ~= 'error' then
 		kind = 'info'
 	end
-	Runtime.Notify(kind, message)
+	notify(kind, message)
 end)
 
 --- @author DemiAutomatic
@@ -386,14 +369,6 @@ function OpxHud.Runtime.SetVisible(value)
 	if State.visible == wanted then return State.visible end
 	State.visible = wanted
 	draw(true)
-	return State.visible
-end
-
---- @author DemiAutomatic
---- @method OpxHud.Runtime.IsVisible
---- @description Answers whether the surface is shown.
---- @returns {boolean}
-function OpxHud.Runtime.IsVisible()
 	return State.visible
 end
 
@@ -438,7 +413,13 @@ AddEventHandler('onClientResourceStart', function(name)
 
 	page:on('hud:ready', function()
 		pageReady = true
-		sendConfig()
+		if page == nil then return end
+		send('hud:config', {
+			anchor = Config.ANCHOR,
+			infoAnchor = Config.INFO_ANCHOR,
+			width = Config.WIDTH,
+			segments = GAUGE_SEGMENTS,
+		})
 		draw(true)
 	end)
 

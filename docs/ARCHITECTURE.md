@@ -49,7 +49,7 @@ Permissions :
 La liste des exports, de la commande, des events et des clés de configuration est dans le README
 et dans opx77_doc ; elle n'est pas recopiée ici.
 
-- **Toute réponse d'export** est une table portant `ok`, construite par `response`
+- **Toute réponse d'export** est une table portant `ok`, construite par `answer`
   (`client/exports.lua`). Aucune export ne refuse ni ne lève : `ok` vaut toujours `true`.
 - **`setVisible`** teste `value ~= false` : toute autre valeur, `nil` compris, affiche. La réponse
   porte la visibilité obtenue, pas celle demandée.
@@ -86,9 +86,9 @@ lieu de rester figées sur leur dernière valeur.
 ## Une valeur absente n'est jamais dessinée à zéro
 
 Une barre de faim vide est une chose sur laquelle un joueur agit. `OpxHud.State.SetNeeds` n'adopte
-les besoins que si `ready == true` et que `values` est une table ; sinon `needsReady` est faux et
-`need` répond `nil`, et les blocs `needs` et `cyber` n'ajoutent rien. Une valeur non finie répond
-aussi `nil`. `OpxHud.State.Finite` fait le test : `value == value` est le test NaN, NaN étant la
+les besoins que si `ready == true` et que `values` est une table ; sinon
+`OpxHud.State.needs` reste `nil`, `need` répond `nil`, et les blocs `needs` et `cyber`
+n'ajoutent rien. Une valeur non finie répond aussi `nil`. `OpxHud.State.Finite` fait le test : `value == value` est le test NaN, NaN étant la
 seule valeur différente d'elle-même.
 
 ## Construire les lignes
@@ -167,7 +167,7 @@ pas la main à travers un `pcall` sur cette plateforme. Ni `GetResourceState`, n
 
 `/hud` n'a qu'une réponse, la ligne d'usage d'un argument inconnu ; afficher ou masquer ne répond
 rien, le HUD qui monte ou descend est la réponse. Le serveur n'envoie pas de ligne de chat : le
-chat est pour ce que disent les joueurs. Il envoie `opx77_hud:notice`, et `OpxHud.Runtime.Notify`
+chat est pour ce que disent les joueurs. Il envoie `opx77_hud:notice`, et `notify` (`client/main.lua`)
 lève un toast via `opx77_notify` dans un emplacement unique remplacé (`opx77_hud.answer`) : un
 joueur qui répète une faute de frappe voit un toast, pas une pile. Avec `NOTIFY = false`, quand
 `opx77_notify` ne tourne pas ou refuse, la même ligne part dans le chat (`chatLine`), et le log le

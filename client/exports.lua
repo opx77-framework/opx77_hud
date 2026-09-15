@@ -2,18 +2,17 @@
 --- @file client/exports.lua
 --- @description The three client exports, each answering a table carrying ok.
 
+local State = OpxHud.State
 local Runtime = OpxHud.Runtime
 local Vanilla = OpxHud.Vanilla
 
 --- @author DemiAutomatic
---- @method response
---- @description Sets ok on an answer table and returns it.
---- @param ok {boolean}
---- @param values {table|nil}
+--- @method answer
+--- @description Marks an answer table ok and returns it.
+--- @param values {table}
 --- @returns {HudResponse}
-local function response(ok, values)
-	values = values or {}
-	values.ok = ok == true
+local function answer(values)
+	values.ok = true
 	return values
 end
 
@@ -23,7 +22,7 @@ end
 --- @param value {boolean}
 --- @returns {HudVisibility}
 exports('setVisible', function(value)
-	return response(true, { visible = Runtime.SetVisible(value) })
+	return answer({ visible = Runtime.SetVisible(value) })
 end)
 
 --- @author DemiAutomatic
@@ -31,7 +30,7 @@ end)
 --- @description Answers whether the HUD is shown.
 --- @returns {HudVisibility}
 exports('isVisible', function()
-	return response(true, { visible = Runtime.IsVisible() })
+	return answer({ visible = State.visible })
 end)
 
 --- @author DemiAutomatic
@@ -39,5 +38,5 @@ end)
 --- @description Reports what became of the game's own HUD, read-only.
 --- @returns {HudVanilla}
 exports('vanilla', function()
-	return response(true, Vanilla.Snapshot())
+	return answer(Vanilla.Snapshot())
 end)

@@ -19,13 +19,8 @@ OpxHud.State.visible = true
 
 --- @author DemiAutomatic
 --- @type {NeedValues|nil}
---- @description Needs opx77_status last published for the live character.
+--- @description Needs opx77_status published for the live character, nil until ready.
 OpxHud.State.needs = nil
-
---- @author DemiAutomatic
---- @type {boolean}
---- @description Whether opx77_status has answered for the live character.
-OpxHud.State.needsReady = false
 
 --- @author DemiAutomatic
 --- @method OpxHud.State.SetNeeds
@@ -33,8 +28,7 @@ OpxHud.State.needsReady = false
 --- @param values {NeedValues|nil}
 --- @param ready {boolean}
 function OpxHud.State.SetNeeds(values, ready)
-	State.needsReady = ready == true and type(values) == 'table'
-	State.needs = State.needsReady and values or nil
+	State.needs = ready == true and type(values) == 'table' and values or nil
 end
 
 --- @author DemiAutomatic
@@ -55,8 +49,9 @@ local finite = State.Finite
 --- @param key {string}
 --- @returns {number|nil}
 local function need(key)
-	if not State.needsReady then return nil end
-	local value = State.needs and State.needs[key]
+	local needs = State.needs
+	if needs == nil then return nil end
+	local value = needs[key]
 	if not finite(value) then return nil end
 	return value
 end
