@@ -8,6 +8,13 @@
   --op77-accent-soft: rgba(252, 238, 10, 0.13);
   --op77-accent-line: rgba(252, 238, 10, 0.45);
   --op77-ink:         #0a0a05;
+
+  --hud-shadow-rgb:     3, 7, 13;
+  --hud-chip-ok-line:   rgba(79, 227, 169, 0.5);
+  --hud-chip-warn-line: rgba(245, 201, 92, 0.5);
+  --hud-chip-bad-line:  rgba(255, 92, 92, 0.5);
+  --hud-shock:          #4ea8ff;
+  --hud-shock-line:     rgba(78, 168, 255, 0.5);
 }
 
 * { box-sizing: border-box; }
@@ -124,7 +131,7 @@ body.open .gauges { transform: none; }
   gap: 3px;
   max-width: 34vw;
   /* no plate under these lines, so the shadow is what keeps them legible */
-  text-shadow: 0 1px 3px rgba(3, 7, 13, 0.95), 0 0 10px rgba(3, 7, 13, 0.7);
+  text-shadow: 0 1px 3px rgba(var(--hud-shadow-rgb), 0.95), 0 0 10px rgba(var(--hud-shadow-rgb), 0.7);
 }
 
 .info.anchor-top-right,
@@ -230,13 +237,13 @@ body.open { opacity: 1; }
 }
 
 /* Never group these: the icon takes a colour, the .time bar a background. */
-.chip.ok { border-color: rgba(79, 227, 169, 0.5); }
+.chip.ok { border-color: var(--hud-chip-ok-line); }
 .chip.ok .icon { color: var(--op77-ok); }
 .chip.ok .time { background: var(--op77-ok); }
-.chip.warn { border-color: rgba(245, 201, 92, 0.5); }
+.chip.warn { border-color: var(--hud-chip-warn-line); }
 .chip.warn .icon { color: var(--op77-warn); }
 .chip.warn .time { background: var(--op77-warn); }
-.chip.bad { border-color: rgba(255, 92, 92, 0.5); }
+.chip.bad { border-color: var(--hud-chip-bad-line); }
 .chip.bad .icon { color: var(--op77-danger); }
 .chip.bad .time { background: var(--op77-danger); }
 .chip.accent { border-color: var(--op77-accent-line); }
@@ -244,18 +251,18 @@ body.open { opacity: 1; }
 .chip.accent .time { background: var(--op77-accent); }
 
 /* Cyberpunk 2077 damage types; `shock` is the one colour not in open77-ui.css. */
-.chip.bleed { border-color: rgba(255, 92, 92, 0.5); }
+.chip.bleed { border-color: var(--hud-chip-bad-line); }
 .chip.bleed .icon { color: var(--op77-danger); }
 .chip.bleed .time { background: var(--op77-danger); }
-.chip.burn { border-color: rgba(245, 201, 92, 0.5); }
+.chip.burn { border-color: var(--hud-chip-warn-line); }
 .chip.burn .icon { color: var(--op77-warn); }
 .chip.burn .time { background: var(--op77-warn); }
-.chip.chem { border-color: rgba(79, 227, 169, 0.5); }
+.chip.chem { border-color: var(--hud-chip-ok-line); }
 .chip.chem .icon { color: var(--op77-ok); }
 .chip.chem .time { background: var(--op77-ok); }
-.chip.shock { --op77-shock: #4ea8ff; border-color: rgba(78, 168, 255, 0.5); }
-.chip.shock .icon { color: var(--op77-shock); }
-.chip.shock .time { background: var(--op77-shock); }
+.chip.shock { border-color: var(--hud-shock-line); }
+.chip.shock .icon { color: var(--hud-shock); }
+.chip.shock .time { background: var(--hud-shock); }
 
 /* What did not fit, counted rather than dropped. */
 .chip.more {

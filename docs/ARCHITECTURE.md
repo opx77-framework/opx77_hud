@@ -236,7 +236,12 @@ il serait inerte. Les lignes de log restent en anglais.
 
 Les tons des lignes (`bad`, `warn`, `on`) sont décidés en Lua et rendus par des classes. Le style
 de la page lit les jetons de `web/open77-ui.css`, le fichier de la plateforme recopié à l'identique
-dans chaque resource et jamais modifié, et ceux du bloc `:root` en tête de `web/hud.css`.
+dans chaque resource et jamais modifié, et ceux du bloc `:root` en tête de `web/hud.css`, seul
+endroit où la feuille écrit une couleur : le jaune de Night City qui remplace l'accent, l'ombre
+des lignes d'information (`--hud-shadow-rgb`, lue par `rgba(var(...), alpha)`), les bordures des
+puces par ton (`--hud-chip-*-line`) et le bleu du type de dégât `shock` (`--hud-shock`,
+`--hud-shock-line`), la seule couleur de puce absente d'`open77-ui.css`. `web/hud.js` et
+`web/index.html` n'écrivent aucune couleur.
 
 ## Invariants
 
