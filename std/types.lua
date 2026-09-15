@@ -1,5 +1,5 @@
 ---@meta
---- Type annotations for opx77_hud. Never loaded at runtime.
+--- Type annotations for opx77_hud. Never loaded at runtime, never listed in open77.lua.
 
 --- A corner of the surface. Anything else falls back to that block's own default.
 ---@alias HudAnchor "bottom-left"|"bottom-right"|"top-left"|"top-right"
