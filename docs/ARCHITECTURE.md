@@ -81,6 +81,11 @@ personnage, ou son serveur n'a pas encore répondu) fait autorité.
 Les noms `opx77:status:needs` et `opx77:status:effects` sont écrits en dur : une resource satellite
 ne peut pas lire la configuration d'une autre.
 
+Un arrêt d'`opx77_core` (redémarrage compris) ne lève pas `opx77:client:onPlayerUnloaded` :
+`onClientResourceStop` avec `name == 'opx77_core'` est donc lu comme un déchargement et exécute
+le même corps (`unload`) — le personnage et ses besoins quittent le cadre au lieu de rester figés.
+Le personnage revient par `opx77:client:onPlayerLoaded` quand le core en recharge un.
+
 `opx77_status` démonte sa bande de puces en s'arrêtant mais ne lève aucun adieu pour les besoins :
 `onClientResourceStop` les efface donc ici, pour que les jauges qu'il possède quittent le cadre au
 lieu de rester figées sur leur dernière valeur.

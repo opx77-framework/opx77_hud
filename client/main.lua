@@ -324,13 +324,18 @@ AddEventHandler(EFFECTS_EVENT, function(payload)
 end)
 
 --- @author DemiAutomatic
---- @event opx77:client:onPlayerUnloaded
+--- @method unload
 --- @description Drops the character and its needs, and redraws.
-AddEventHandler('opx77:client:onPlayerUnloaded', function()
+local function unload()
 	State.data = nil
 	State.SetNeeds(nil, false)
 	draw()
-end)
+end
+
+--- @author DemiAutomatic
+--- @event opx77:client:onPlayerUnloaded
+--- @description Drops the character and its needs, and redraws.
+AddEventHandler('opx77:client:onPlayerUnloaded', unload)
 
 --- @author DemiAutomatic
 --- @event opx77_hud:visibility
@@ -437,9 +442,10 @@ end)
 
 --- @author DemiAutomatic
 --- @event onClientResourceStop
---- @description Blanks needs when opx77_status stops; forgets the page on this stop.
+--- @description Unloads on a core stop, blanks status needs, forgets the page.
 --- @param name {string}
 AddEventHandler('onClientResourceStop', function(name)
+	if name == CORE then return unload() end
 	if name == STATUS then
 		State.SetNeeds(nil, false)
 		draw()

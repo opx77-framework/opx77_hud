@@ -84,7 +84,9 @@ that loaded before this resource did, and after that only from the client-local
 `opx77:client:onPlayerLoaded`, `opx77:client:playerDataChanged` and
 `opx77:client:onPlayerUnloaded`. There is no poll behind it: the core resends the whole of
 `PlayerData` on every change to health, armour, money and job, and its client half raises
-`playerDataChanged` off that.
+`playerDataChanged` off that. A stop or restart of `opx77_core` raises no unload event, so the
+HUD treats that stop as an unload: the character and its needs leave the frame until the core
+loads a character again.
 
 `opx77_status` is read the same way: once at start with its `getNeeds` export, and after that
 only from the client-local `opx77:status:needs` event, which it raises on every change. The
