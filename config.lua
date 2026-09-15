@@ -43,7 +43,7 @@ OPX_HUD_CONFIG = {
 		HIDE_OPEN_VOICE = true,
 	},
 	VEHICLE = {
-		ANCHOR = 'top-center',
+		ANCHOR = 'bottom-center',
 		PASSENGER = true,
 	},
 }

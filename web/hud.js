@@ -90,7 +90,7 @@
 
     var voiceCount = Number(payload.voiceSegments);
     if (isFinite(voiceCount) && voiceCount >= 2) voiceCells = cells(voiceMeter, Math.round(voiceCount));
-    vehicleEl.className = "vehicle " + (ANCHORS[text(payload.vehicleAnchor)] || ANCHORS["top-center"]) +
+    vehicleEl.className = "vehicle " + (ANCHORS[text(payload.vehicleAnchor)] || ANCHORS["bottom-center"]) +
       (vehicleEl.classList.contains("live") ? " live" : "");
   }
 
