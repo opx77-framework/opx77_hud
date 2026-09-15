@@ -460,8 +460,8 @@ body.open .gauges { transform: none; }
 
 .vehicle-dial {
   position: relative;
-  width: 156px;
-  height: 156px;
+  width: 112px;
+  height: 112px;
 }
 
 .vehicle-rings {
@@ -511,7 +511,7 @@ body.open .gauges { transform: none; }
 }
 
 .vehicle-speed {
-  font: 700 var(--op77-fs-hero) / 1 var(--op77-font-display);
+  font: 700 var(--op77-fs-head) / 1 var(--op77-font-display);
   letter-spacing: var(--op77-track-head);
   color: var(--op77-text);
   font-variant-numeric: tabular-nums;
@@ -526,14 +526,14 @@ body.open .gauges { transform: none; }
 /* The gear sits in the dial's open bottom, between the ring's ends. */
 .vehicle-gear {
   position: absolute;
-  bottom: 14px;
+  bottom: 8px;
   left: 50%;
   transform: translateX(-50%);
-  min-width: 24px;
-  padding: 4px 6px 3px;
+  min-width: 18px;
+  padding: 3px 4px 2px;
   background: var(--op77-accent);
-  clip-path: polygon(0 0, calc(100% - 6px) 0, 100% 6px, 100% 100%, 0 100%);
-  font: 700 var(--op77-fs-lead) / 1 var(--op77-font-mono);
+  clip-path: polygon(0 0, calc(100% - 4px) 0, 100% 4px, 100% 100%, 0 100%);
+  font: 700 var(--op77-fs-meta) / 1 var(--op77-font-mono);
   text-align: center;
   color: var(--op77-ink);
 }
