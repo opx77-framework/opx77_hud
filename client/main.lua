@@ -139,7 +139,7 @@ local function call(resource, name, ...)
 	local result, callError = promise:await()
 	if callError then return nil, tostring(callError), false end
 	if type(result) ~= 'table' then return nil, 'malformed_answer', true end
-	if result.ok == false then return nil, tostring(result.error or 'refused'), true end
+	if result.ok ~= true then return nil, tostring(result.error or 'refused'), true end
 	return result, nil, true
 end
 

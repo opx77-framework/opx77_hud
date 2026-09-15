@@ -71,7 +71,9 @@ l'autre.
 `call` (`client/main.lua`) lit un échec à trois niveaux : la resource ne tourne pas
 (`GetResourceState`, un indice), l'appel n'est pas parti (`promise` absente — une promesse est un
 userdata, testée par présence), l'appel est parti et a échoué (`callError`), ou la resource a
-répondu par un refus. Son troisième retour, `answered`, dit si la resource a exécuté l'export :
+répondu par un refus. Une réponse est un refus dès que `ok` n'y vaut pas `true` (`ok ~= true`) :
+une table sans `ok`, ou avec une autre valeur, n'affirme rien et ne doit pas passer pour un
+accord. Son troisième retour, `answered`, dit si la resource a exécuté l'export :
 **seul un refus efface quelque chose**. Un appel qui n'a jamais atterri ne dit rien du personnage,
 et `pull` / `pullNeeds` gardent alors ce qu'ils avaient ; un refus d'`opx77_status` (pas de
 personnage, ou son serveur n'a pas encore répondu) fait autorité.
